@@ -8,6 +8,7 @@ import androidx.recyclerview.widget.LinearLayoutManager;
 
 import com.example.mymusicplayer.R;
 import com.example.mymusicplayer.databinding.ActivityDownloadedBinding;
+import com.example.mymusicplayer.playback.MusicService;
 import com.example.mymusicplayer.ui.library.LibraryViewModel;
 import com.example.mymusicplayer.ui.main.adapter.ManageTrackAdapter;
 import com.example.mymusicplayer.ui.player.BasePlayerActivity;
@@ -45,18 +46,37 @@ public class DownloadedActivity extends BasePlayerActivity {
 
         binding.recyclerTracks.setLayoutManager(new LinearLayoutManager(this));
         binding.recyclerTracks.setAdapter(trackAdapter);
+        setupSwipeRefresh(binding.swipeRefresh);
         setupPlayerUi(binding.miniPlayer, binding.textMiniPlayerTitle, binding.buttonMiniPlayerAction);
+        refreshNetworkState(false);
+        binding.buttonBack.setOnClickListener(view -> finish());
 
         viewModel.getDownloadedTracks().observe(this, tracks -> {
             trackAdapter.submitList(tracks);
             binding.textEmpty.setVisibility(
                     tracks == null || tracks.isEmpty() ? android.view.View.VISIBLE : android.view.View.GONE
             );
+            notifyPlaybackQueueChanged();
         });
     }
 
     @Override
     protected List<com.example.mymusicplayer.data.local.entity.Track> getPlaybackQueue() {
         return trackAdapter == null ? new ArrayList<>() : trackAdapter.getItems();
+    }
+
+    @Override
+    protected String resolvePlaybackSource(@Nullable com.example.mymusicplayer.data.local.entity.Track track) {
+        return MusicService.PLAYBACK_SOURCE_DOWNLOADED;
+    }
+
+    @Override
+    protected String resolvePlaybackSourceLabel(@Nullable com.example.mymusicplayer.data.local.entity.Track track) {
+        return getString(R.string.player_source_downloaded);
+    }
+
+    @Override
+    protected boolean shouldNavigateToMainOnOfflineRefresh() {
+        return false;
     }
 }

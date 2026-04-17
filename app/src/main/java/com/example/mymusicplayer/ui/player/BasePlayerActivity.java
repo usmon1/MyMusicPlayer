@@ -22,12 +22,19 @@ import android.widget.Toast;
 import androidx.annotation.Nullable;
 import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.appcompat.app.AppCompatDelegate;
+import androidx.core.content.ContextCompat;
+import androidx.swiperefreshlayout.widget.SwipeRefreshLayout;
 
 import com.example.mymusicplayer.R;
 import com.example.mymusicplayer.data.local.entity.Playlist;
 import com.example.mymusicplayer.data.local.entity.Track;
 import com.example.mymusicplayer.data.repository.MusicRepository;
 import com.example.mymusicplayer.playback.MusicService;
+import com.example.mymusicplayer.ui.main.MainActivity;
+import com.example.mymusicplayer.util.NetworkMonitor;
+import com.example.mymusicplayer.util.PlaybackAccessHelper;
+import com.example.mymusicplayer.util.ThemeManager;
 
 import java.io.InputStream;
 import java.net.URL;
@@ -39,6 +46,7 @@ public abstract class BasePlayerActivity extends AppCompatActivity
         implements PlayerBottomSheetFragment.PlayerControlListener {
 
     private static final long PLAYER_PROGRESS_UPDATE_DELAY_MS = 500L;
+    public static final String EXTRA_FORCE_OFFLINE_MODE = "force_offline_mode";
 
     private final List<Playlist> playlists = new ArrayList<>();
     private final Handler miniPlayerProgressHandler = new Handler(Looper.getMainLooper());
@@ -53,11 +61,20 @@ public abstract class BasePlayerActivity extends AppCompatActivity
     };
 
     private MusicRepository repository;
+    private NetworkMonitor networkMonitor;
     private PlayerBottomSheetFragment playerBottomSheetFragment;
     private MusicService musicService;
     private boolean isServiceBound;
+    private boolean isNetworkAvailable;
+    private Boolean lastNetworkAvailable;
     private Track currentTrack;
     private Track pendingTrackToPlay;
+    private List<Track> pendingPlaybackQueue;
+    private String pendingQueueTrackId;
+    private String pendingPlaybackSource;
+    private String pendingPlaybackSourceLabel;
+    private String pendingLaunchPlaybackSource;
+    private String pendingLaunchPlaybackSourceLabel;
     private boolean isPlaying;
 
     private View miniPlayerView;
@@ -76,6 +93,7 @@ public abstract class BasePlayerActivity extends AppCompatActivity
 
             musicService.getCurrentTrack().observe(BasePlayerActivity.this, track -> {
                 currentTrack = track;
+                onCurrentTrackChanged(track);
                 renderPlayerState();
             });
 
@@ -90,7 +108,15 @@ public abstract class BasePlayerActivity extends AppCompatActivity
                 }
             });
 
+            syncPlaybackQueueWithService();
+
             if (pendingTrackToPlay != null) {
+                musicService.setPlaybackContext(
+                        pendingPlaybackQueue,
+                        pendingTrackToPlay.getId(),
+                        pendingLaunchPlaybackSource,
+                        pendingLaunchPlaybackSourceLabel
+                );
                 musicService.playTrack(pendingTrackToPlay);
                 pendingTrackToPlay = null;
             }
@@ -110,8 +136,12 @@ public abstract class BasePlayerActivity extends AppCompatActivity
 
     @Override
     protected void onCreate(@Nullable Bundle savedInstanceState) {
+        AppCompatDelegate.setDefaultNightMode(ThemeManager.getSavedNightMode(this));
         super.onCreate(savedInstanceState);
         repository = new MusicRepository(this);
+        networkMonitor = NetworkMonitor.getInstance(this);
+        isNetworkAvailable = networkMonitor.isCurrentlyConnected();
+        lastNetworkAvailable = isNetworkAvailable;
         repository.getAllPlaylists().observe(this, items -> {
             playlists.clear();
             if (items != null) {
@@ -157,16 +187,42 @@ public abstract class BasePlayerActivity extends AppCompatActivity
     }
 
     protected void playTrack(Track track) {
+        playTrackWithSource(
+                track,
+                resolvePlaybackSource(track),
+                resolvePlaybackSourceLabel(track)
+        );
+    }
+
+    protected void playTrackWithSource(Track track,
+                                       @Nullable String playbackSource,
+                                       @Nullable String playbackSourceLabel) {
         if (track == null) {
             return;
         }
 
+        PlaybackAccessHelper.prepareTrackForPlayback(this, track);
+        if (!PlaybackAccessHelper.canPlayTrack(this, track)) {
+            Toast.makeText(this, R.string.message_track_unavailable_offline, Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        ensurePlaybackServiceStarted();
         repository.saveTrack(track);
-        repository.updateLastPlayed(track.getId());
+        repository.updateLastPlayed(track);
         currentTrack = track;
         isPlaying = true;
+        pendingLaunchPlaybackSource = playbackSource;
+        pendingLaunchPlaybackSourceLabel = playbackSourceLabel;
+        syncPlaybackQueueSnapshot(track, playbackSource, playbackSourceLabel);
 
         if (isServiceBound && musicService != null) {
+            musicService.setPlaybackContext(
+                    getPlaybackQueue(),
+                    track.getId(),
+                    playbackSource,
+                    playbackSourceLabel
+            );
             musicService.playTrack(track);
         } else {
             pendingTrackToPlay = track;
@@ -186,6 +242,85 @@ public abstract class BasePlayerActivity extends AppCompatActivity
 
     protected List<Track> getPlaybackQueue() {
         return Collections.emptyList();
+    }
+
+    protected void notifyPlaybackQueueChanged() {
+        syncPlaybackQueueSnapshot(
+                currentTrack,
+                getCurrentPlaybackSource(),
+                getCurrentPlaybackSourceLabel()
+        );
+        syncPlaybackQueueWithService();
+    }
+
+    protected String getCurrentPlaybackSourceLabel() {
+        if (musicService != null && musicService.getCurrentPlaybackSourceLabel() != null) {
+            return musicService.getCurrentPlaybackSourceLabel();
+        }
+
+        return pendingPlaybackSourceLabel;
+    }
+
+    protected String getCurrentPlaybackSource() {
+        if (musicService != null && musicService.getCurrentPlaybackSource() != null) {
+            return musicService.getCurrentPlaybackSource();
+        }
+
+        return pendingPlaybackSource;
+    }
+
+    protected String resolvePlaybackSource(@Nullable Track track) {
+        return null;
+    }
+
+    protected String resolvePlaybackSourceLabel(@Nullable Track track) {
+        return null;
+    }
+
+    protected boolean isNetworkAvailable() {
+        return isNetworkAvailable;
+    }
+
+    protected void forceNetworkAvailability(boolean isNetworkAvailable) {
+        this.isNetworkAvailable = isNetworkAvailable;
+        this.lastNetworkAvailable = isNetworkAvailable;
+    }
+
+    protected void onNetworkAvailabilityChanged(boolean isNetworkAvailable) {
+    }
+
+    protected boolean shouldNavigateToMainOnOfflineRefresh() {
+        return true;
+    }
+
+    protected void setupSwipeRefresh(@Nullable SwipeRefreshLayout swipeRefreshLayout) {
+        if (swipeRefreshLayout == null) {
+            return;
+        }
+
+        swipeRefreshLayout.setOnRefreshListener(() -> {
+            refreshNetworkState(true);
+            swipeRefreshLayout.setRefreshing(false);
+        });
+    }
+
+    protected void refreshNetworkState(boolean fromUserRefresh) {
+        boolean currentState = networkMonitor.refresh();
+
+        isNetworkAvailable = currentState;
+        lastNetworkAvailable = currentState;
+        onNetworkAvailabilityChanged(currentState);
+
+        if (fromUserRefresh && !currentState) {
+            handleNetworkLost();
+        } else if (fromUserRefresh) {
+            Toast.makeText(this, R.string.message_network_available, Toast.LENGTH_SHORT).show();
+        }
+    }
+
+    protected boolean ownsPlaybackSource(@Nullable String playbackSource) {
+        String screenPlaybackSource = resolvePlaybackSource(currentTrack);
+        return screenPlaybackSource != null && screenPlaybackSource.equals(playbackSource);
     }
 
     protected long getPlaybackPosition() {
@@ -218,6 +353,24 @@ public abstract class BasePlayerActivity extends AppCompatActivity
         notifyPlayerBottomSheetProgressChanged();
     }
 
+    private void handleNetworkLost() {
+        boolean canContinueOffline = PlaybackAccessHelper.isOfflinePlayable(this, currentTrack);
+        if (!canContinueOffline && musicService != null && currentTrack != null) {
+            musicService.stopPlayback();
+            Toast.makeText(this, R.string.message_playback_stopped_offline, Toast.LENGTH_SHORT).show();
+        } else {
+            Toast.makeText(this, R.string.message_offline_mode_applied, Toast.LENGTH_SHORT).show();
+        }
+
+        if (!(this instanceof MainActivity) && shouldNavigateToMainOnOfflineRefresh()) {
+            Intent mainIntent = new Intent(this, MainActivity.class);
+            mainIntent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_SINGLE_TOP);
+            mainIntent.putExtra(EXTRA_FORCE_OFFLINE_MODE, true);
+            startActivity(mainIntent);
+            finish();
+        }
+    }
+
     private void showPlayerBottomSheet() {
         if (playerBottomSheetFragment == null) {
             playerBottomSheetFragment = PlayerBottomSheetFragment.newInstance();
@@ -227,14 +380,25 @@ public abstract class BasePlayerActivity extends AppCompatActivity
             playerBottomSheetFragment.show(getSupportFragmentManager(), PlayerBottomSheetFragment.TAG);
         }
 
-        playerBottomSheetFragment.updatePlayerState(currentTrack, isPlaying);
+        playerBottomSheetFragment.updatePlayerState(
+                currentTrack,
+                isPlaying,
+                getCurrentPlaybackSourceLabel()
+        );
         notifyPlayerBottomSheetProgressChanged();
+    }
+
+    private void ensurePlaybackServiceStarted() {
+        Intent serviceIntent = new Intent(this, MusicService.class);
+        ContextCompat.startForegroundService(this, serviceIntent);
     }
 
     private void renderPlayerState() {
         if (miniPlayerTitleView == null || miniPlayerActionButton == null) {
             return;
         }
+
+        syncPlaybackQueueWithService();
 
         if (currentTrack == null) {
             miniPlayerTitleView.setText(R.string.mini_player_idle);
@@ -262,7 +426,11 @@ public abstract class BasePlayerActivity extends AppCompatActivity
         updateMiniPlayerProgress();
 
         if (playerBottomSheetFragment != null) {
-            playerBottomSheetFragment.updatePlayerState(currentTrack, isPlaying);
+            playerBottomSheetFragment.updatePlayerState(
+                    currentTrack,
+                    isPlaying,
+                    getCurrentPlaybackSourceLabel()
+            );
             notifyPlayerBottomSheetProgressChanged();
         }
 
@@ -270,6 +438,9 @@ public abstract class BasePlayerActivity extends AppCompatActivity
     }
 
     protected void onPlayerStateChanged(Track track, boolean isPlaying) {
+    }
+
+    protected void onCurrentTrackChanged(Track track) {
     }
 
     protected void onPlaybackCompleted() {
@@ -282,6 +453,11 @@ public abstract class BasePlayerActivity extends AppCompatActivity
 
     @Override
     public void onFavoriteClicked() {
+        if (!isNetworkAvailable) {
+            Toast.makeText(this, R.string.message_feature_online_only, Toast.LENGTH_SHORT).show();
+            return;
+        }
+
         if (currentTrack == null) {
             return;
         }
@@ -295,6 +471,11 @@ public abstract class BasePlayerActivity extends AppCompatActivity
 
     @Override
     public void onAddToPlaylistClicked() {
+        if (!isNetworkAvailable) {
+            Toast.makeText(this, R.string.message_feature_online_only, Toast.LENGTH_SHORT).show();
+            return;
+        }
+
         if (currentTrack == null) {
             Toast.makeText(this, R.string.message_select_track_first, Toast.LENGTH_SHORT).show();
             return;
@@ -327,22 +508,28 @@ public abstract class BasePlayerActivity extends AppCompatActivity
 
     @Override
     public void onDownloadClicked() {
-        if (currentTrack == null) {
+        if (!isNetworkAvailable) {
+            Toast.makeText(this, R.string.message_feature_online_only, Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        Track trackToDownload = currentTrack;
+        if (trackToDownload == null) {
             Toast.makeText(this, R.string.message_select_track_first, Toast.LENGTH_SHORT).show();
             return;
         }
 
-        if (currentTrack.isDownloaded()) {
+        if (trackToDownload.isDownloaded()) {
             Toast.makeText(this, R.string.message_already_downloaded, Toast.LENGTH_SHORT).show();
             return;
         }
 
-        repository.downloadTrack(currentTrack, new MusicRepository.DownloadCallback() {
+        repository.downloadTrack(trackToDownload, new MusicRepository.DownloadCallback() {
             @Override
             public void onSuccess(String localUri) {
-                currentTrack.setDownloaded(true);
-                currentTrack.setDataUri(localUri);
-                repository.saveTrack(currentTrack);
+                trackToDownload.setDownloaded(true);
+                trackToDownload.setDataUri(localUri);
+                repository.saveTrack(trackToDownload);
                 runOnUiThread(() -> {
                     renderPlayerState();
                     Toast.makeText(
@@ -366,17 +553,15 @@ public abstract class BasePlayerActivity extends AppCompatActivity
 
     @Override
     public void onPreviousClicked() {
-        Track previousTrack = getAdjacentTrack(-1);
-        if (previousTrack != null) {
-            playTrack(previousTrack);
+        if (isServiceBound && musicService != null) {
+            musicService.playPrevious();
         }
     }
 
     @Override
     public void onNextClicked() {
-        Track nextTrack = getAdjacentTrack(1);
-        if (nextTrack != null) {
-            playTrack(nextTrack);
+        if (isServiceBound && musicService != null) {
+            musicService.playNext();
         }
     }
 
@@ -451,6 +636,37 @@ public abstract class BasePlayerActivity extends AppCompatActivity
                     getPlaybackDuration()
             );
         }
+    }
+
+    private void syncPlaybackQueueSnapshot(@Nullable Track track,
+                                           @Nullable String playbackSource,
+                                           @Nullable String playbackSourceLabel) {
+        pendingPlaybackQueue = new ArrayList<>(getPlaybackQueue());
+        pendingQueueTrackId = track == null ? null : track.getId();
+        pendingPlaybackSource = playbackSource;
+        pendingPlaybackSourceLabel = playbackSourceLabel;
+    }
+
+    private void syncPlaybackQueueWithService() {
+        if (!isServiceBound || musicService == null) {
+            return;
+        }
+
+        String activePlaybackSource = getCurrentPlaybackSource();
+        if (activePlaybackSource != null && !ownsPlaybackSource(activePlaybackSource)) {
+            return;
+        }
+
+        List<Track> queue = new ArrayList<>(getPlaybackQueue());
+        if (queue.isEmpty() && pendingPlaybackQueue != null) {
+            queue = pendingPlaybackQueue;
+        }
+        String trackId = currentTrack != null ? currentTrack.getId() : pendingQueueTrackId;
+        if (trackId == null && pendingTrackToPlay != null) {
+            trackId = pendingTrackToPlay.getId();
+        }
+
+        musicService.updatePlaybackQueue(queue, trackId);
     }
 
     private void loadMiniPlayerCover(Track track) {

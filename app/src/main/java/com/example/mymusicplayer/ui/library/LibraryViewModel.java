@@ -10,6 +10,7 @@ import androidx.lifecycle.MediatorLiveData;
 import com.example.mymusicplayer.data.local.entity.Playlist;
 import com.example.mymusicplayer.data.local.entity.Track;
 import com.example.mymusicplayer.data.repository.MusicRepository;
+import com.example.mymusicplayer.util.NetworkMonitor;
 
 import java.util.List;
 
@@ -17,12 +18,14 @@ public class LibraryViewModel extends AndroidViewModel {
 
     private final MusicRepository repository;
     private final MediatorLiveData<List<Track>> localTracks = new MediatorLiveData<>();
+    private final NetworkMonitor networkMonitor;
 
     private LiveData<List<Track>> localTracksSource;
 
     public LibraryViewModel(@NonNull Application application) {
         super(application);
         repository = new MusicRepository(application);
+        networkMonitor = NetworkMonitor.getInstance(application);
     }
 
     public LiveData<List<Playlist>> getPlaylists() {
@@ -39,6 +42,10 @@ public class LibraryViewModel extends AndroidViewModel {
 
     public LiveData<List<Track>> getLocalTracks() {
         return localTracks;
+    }
+
+    public LiveData<Boolean> getIsNetworkAvailable() {
+        return networkMonitor.getIsConnected();
     }
 
     public void loadLocalTracks() {

@@ -10,6 +10,7 @@ import androidx.recyclerview.widget.LinearLayoutManager;
 import com.example.mymusicplayer.R;
 import com.example.mymusicplayer.data.local.entity.Track;
 import com.example.mymusicplayer.databinding.ActivityPlaylistDetailsBinding;
+import com.example.mymusicplayer.playback.MusicService;
 import com.example.mymusicplayer.ui.main.adapter.ManageTrackAdapter;
 import com.example.mymusicplayer.ui.player.BasePlayerActivity;
 
@@ -58,7 +59,10 @@ public class PlaylistDetailsActivity extends BasePlayerActivity {
 
         binding.recyclerTracks.setLayoutManager(new LinearLayoutManager(this));
         binding.recyclerTracks.setAdapter(trackAdapter);
+        setupSwipeRefresh(binding.swipeRefresh);
         setupPlayerUi(binding.miniPlayer, binding.textMiniPlayerTitle, binding.buttonMiniPlayerAction);
+        refreshNetworkState(false);
+        binding.buttonBack.setOnClickListener(view -> finish());
 
         observeTracks();
     }
@@ -77,14 +81,26 @@ public class PlaylistDetailsActivity extends BasePlayerActivity {
         }
 
         tracksSource.observe(this, tracks -> {
+            if (!isNetworkAvailable()) {
+                trackAdapter.submitList(new ArrayList<>());
+                binding.textEmpty.setVisibility(android.view.View.VISIBLE);
+                binding.textEmpty.setText(R.string.message_feature_online_only);
+                return;
+            }
+
             trackAdapter.submitList(tracks);
             binding.textEmpty.setVisibility(
                     tracks == null || tracks.isEmpty() ? android.view.View.VISIBLE : android.view.View.GONE
             );
+            notifyPlaybackQueueChanged();
         });
     }
 
     private void removeTrack(Track track) {
+        if (!isNetworkAvailable()) {
+            return;
+        }
+
         if (isFavorites) {
             viewModel.removeFromFavorites(track);
         } else {
@@ -95,5 +111,58 @@ public class PlaylistDetailsActivity extends BasePlayerActivity {
     @Override
     protected List<Track> getPlaybackQueue() {
         return trackAdapter == null ? new ArrayList<>() : trackAdapter.getItems();
+    }
+
+    @Override
+    protected String resolvePlaybackSource(@Nullable Track track) {
+        return isFavorites
+                ? MusicService.PLAYBACK_SOURCE_FAVORITES
+                : MusicService.PLAYBACK_SOURCE_PLAYLIST;
+    }
+
+    @Override
+    protected String resolvePlaybackSourceLabel(@Nullable Track track) {
+        if (isFavorites) {
+            return getString(R.string.player_source_favorites);
+        }
+
+        String playlistName = getIntent().getStringExtra(PlaylistListActivity.EXTRA_PLAYLIST_NAME);
+        if (playlistName == null || playlistName.trim().isEmpty()) {
+            return getString(R.string.title_playlists);
+        }
+
+        return getString(R.string.player_source_playlist, playlistName);
+    }
+
+    @Override
+    protected boolean ownsPlaybackSource(@Nullable String playbackSource) {
+        String screenPlaybackSource = resolvePlaybackSource(getCurrentTrack());
+        if (screenPlaybackSource == null || !screenPlaybackSource.equals(playbackSource)) {
+            return false;
+        }
+
+        String activeLabel = getCurrentPlaybackSourceLabel();
+        String screenLabel = resolvePlaybackSourceLabel(getCurrentTrack());
+        if (activeLabel == null || screenLabel == null) {
+            return false;
+        }
+
+        return activeLabel.equals(screenLabel);
+    }
+
+    @Override
+    protected void onNetworkAvailabilityChanged(boolean isNetworkAvailable) {
+        if (binding == null || trackAdapter == null) {
+            return;
+        }
+
+        if (!isNetworkAvailable) {
+            trackAdapter.submitList(new ArrayList<>());
+            binding.textEmpty.setVisibility(android.view.View.VISIBLE);
+            binding.textEmpty.setText(R.string.message_feature_online_only);
+            return;
+        }
+
+        observeTracks();
     }
 }

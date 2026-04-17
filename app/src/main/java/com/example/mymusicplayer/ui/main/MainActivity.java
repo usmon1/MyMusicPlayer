@@ -16,11 +16,15 @@ import androidx.recyclerview.widget.LinearLayoutManager;
 import com.example.mymusicplayer.R;
 import com.example.mymusicplayer.data.local.entity.Track;
 import com.example.mymusicplayer.databinding.ActivityMainBinding;
+import com.example.mymusicplayer.playback.MusicService;
 import com.example.mymusicplayer.ui.downloaded.DownloadedActivity;
 import com.example.mymusicplayer.ui.local.LocalMusicActivity;
 import com.example.mymusicplayer.ui.main.adapter.TrackAdapter;
 import com.example.mymusicplayer.ui.player.BasePlayerActivity;
 import com.example.mymusicplayer.ui.playlist.PlaylistListActivity;
+import com.example.mymusicplayer.ui.search.SearchActivity;
+import com.example.mymusicplayer.util.PlaybackAccessHelper;
+import com.example.mymusicplayer.util.ThemeManager;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -31,25 +35,42 @@ public class MainActivity extends BasePlayerActivity {
     private ActivityMainBinding binding;
     private MainViewModel viewModel;
     private TrackAdapter recentAdapter;
+    private List<Track> recentTracksCache = new ArrayList<>();
     private Track currentWaveTrack;
     private boolean isWavePlaybackPending;
+    private boolean shouldForceOfflineMode;
 
     @Override
     protected void onCreate(@Nullable Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         EdgeToEdge.enable(this);
+        shouldForceOfflineMode = getIntent().getBooleanExtra(EXTRA_FORCE_OFFLINE_MODE, false);
 
         binding = ActivityMainBinding.inflate(getLayoutInflater());
         setContentView(binding.getRoot());
 
         setupInsets();
         setupViewModel();
+        setupTopBar();
         setupNavigationCards();
         setupWaveBlock();
         setupRecyclerViews();
+        setupSwipeRefresh(binding.swipeRefresh);
         setupPlayerUi(binding.miniPlayer, binding.textMiniPlayerTitle, binding.buttonMiniPlayerAction);
         observeViewModel();
+        applyInitialNetworkState();
         loadData();
+    }
+
+    @Override
+    protected void onNewIntent(Intent intent) {
+        super.onNewIntent(intent);
+        setIntent(intent);
+        shouldForceOfflineMode = intent != null
+                && intent.getBooleanExtra(EXTRA_FORCE_OFFLINE_MODE, false);
+        if (binding != null && viewModel != null) {
+            applyInitialNetworkState();
+        }
     }
 
     private void setupInsets() {
@@ -62,12 +83,34 @@ public class MainActivity extends BasePlayerActivity {
 
     private void setupViewModel() {
         viewModel = new ViewModelProvider(this).get(MainViewModel.class);
+        viewModel.setNetworkAvailable(isNetworkAvailable());
+    }
+
+    private void setupTopBar() {
+        binding.buttonTheme.setOnClickListener(view -> {
+            ThemeManager.toggleTheme(this);
+            recreate();
+        });
+        binding.buttonSearch.setOnClickListener(view -> {
+            if (!isNetworkAvailable()) {
+                Toast.makeText(this, R.string.message_feature_online_only, Toast.LENGTH_SHORT).show();
+                return;
+            }
+
+            startActivity(new Intent(this, SearchActivity.class));
+        });
+        updateThemeButton();
     }
 
     private void setupNavigationCards() {
-        binding.cardPlaylists.setOnClickListener(view ->
-                startActivity(new Intent(this, PlaylistListActivity.class))
-        );
+        binding.cardPlaylists.setOnClickListener(view -> {
+            if (!isNetworkAvailable()) {
+                Toast.makeText(this, R.string.message_feature_online_only, Toast.LENGTH_SHORT).show();
+                return;
+            }
+
+            startActivity(new Intent(this, PlaylistListActivity.class));
+        });
 
         binding.cardLocalMusic.setOnClickListener(view ->
                 startActivity(new Intent(this, LocalMusicActivity.class))
@@ -79,7 +122,11 @@ public class MainActivity extends BasePlayerActivity {
     }
 
     private void setupRecyclerViews() {
-        recentAdapter = new TrackAdapter(this::playTrack);
+        recentAdapter = new TrackAdapter(track -> playTrackWithSource(
+                track,
+                MusicService.PLAYBACK_SOURCE_RECENT,
+                getString(R.string.player_source_recent)
+        ));
         binding.recyclerRecent.setLayoutManager(new LinearLayoutManager(this));
         binding.recyclerRecent.setAdapter(recentAdapter);
         binding.recyclerRecent.setNestedScrollingEnabled(false);
@@ -108,6 +155,7 @@ public class MainActivity extends BasePlayerActivity {
             }
 
             updateWaveUi();
+            notifyPlaybackQueueChanged();
         });
 
         viewModel.getIsWaveLoading().observe(this, loading -> {
@@ -123,7 +171,11 @@ public class MainActivity extends BasePlayerActivity {
 
             updateWaveUi();
         });
-        viewModel.getRecentTracks().observe(this, tracks -> recentAdapter.submitList(tracks));
+        viewModel.getRecentTracks().observe(this, tracks -> {
+            recentTracksCache = tracks == null ? new ArrayList<>() : new ArrayList<>(tracks);
+            renderRecentTracks();
+            notifyPlaybackQueueChanged();
+        });
     }
 
     private void loadData() {
@@ -132,11 +184,20 @@ public class MainActivity extends BasePlayerActivity {
     }
 
     private void handleWaveAction() {
+        if (!isNetworkAvailable()) {
+            Toast.makeText(this, R.string.message_feature_online_only, Toast.LENGTH_SHORT).show();
+            updateWaveUi();
+            return;
+        }
+
         Log.d(TAG, "Wave action clicked: loading=" + viewModel.getIsWaveLoading().getValue()
                 + ", hasWaveTracks=" + viewModel.hasWaveTracks());
         Track playingTrack = getCurrentTrack();
-        currentWaveTrack = viewModel.getCurrentWaveTrack();
-        boolean isCurrentWaveTrack = viewModel.isCurrentWaveTrack(playingTrack);
+        currentWaveTrack = getWaveTrackForUi();
+        boolean isCurrentWaveTrack = isWavePlaybackContext()
+                && currentWaveTrack != null
+                && playingTrack != null
+                && currentWaveTrack.getId().equals(playingTrack.getId());
 
         if (isCurrentWaveTrack && playingTrack != null) {
             onPlayPauseClicked();
@@ -160,11 +221,24 @@ public class MainActivity extends BasePlayerActivity {
 
         isWavePlaybackPending = false;
         currentWaveTrack = waveTrackToPlay;
-        playTrack(currentWaveTrack);
+        playTrackWithSource(
+                currentWaveTrack,
+                MusicService.PLAYBACK_SOURCE_WAVE,
+                getString(R.string.player_source_wave)
+        );
         updateWaveUi();
     }
 
     private void updateWaveUi() {
+        if (!isNetworkAvailable()) {
+            binding.textWaveSubtitle.setText(R.string.wave_subtitle_offline);
+            binding.buttonWaveAction.setEnabled(false);
+            binding.buttonWaveAction.setText(R.string.offline_mode);
+            binding.cardPlaylists.setAlpha(0.5f);
+            return;
+        }
+
+        binding.cardPlaylists.setAlpha(1f);
         List<Track> availableWaveTracks = viewModel.getRandomTracks().getValue();
         boolean hasWaveTracks = availableWaveTracks != null && !availableWaveTracks.isEmpty();
         boolean isLoadingWave = Boolean.TRUE.equals(viewModel.getIsWaveLoading().getValue());
@@ -181,8 +255,11 @@ public class MainActivity extends BasePlayerActivity {
         binding.buttonWaveAction.setEnabled(true);
 
         Track playingTrack = getCurrentTrack();
-        currentWaveTrack = viewModel.getCurrentWaveTrack();
-        boolean isCurrentWaveTrack = viewModel.isCurrentWaveTrack(playingTrack);
+        currentWaveTrack = getWaveTrackForUi();
+        boolean isCurrentWaveTrack = isWavePlaybackContext()
+                && currentWaveTrack != null
+                && playingTrack != null
+                && currentWaveTrack.getId().equals(playingTrack.getId());
 
         if (isCurrentWaveTrack && currentWaveTrack != null) {
             binding.textWaveSubtitle.setText(getString(
@@ -208,9 +285,44 @@ public class MainActivity extends BasePlayerActivity {
     }
 
     @Override
+    protected void onNetworkAvailabilityChanged(boolean isNetworkAvailable) {
+        if (viewModel == null || binding == null) {
+            return;
+        }
+
+        forceNetworkAvailability(isNetworkAvailable);
+        viewModel.setNetworkAvailable(isNetworkAvailable);
+        if (isNetworkAvailable && !viewModel.hasWaveTracks()) {
+            viewModel.loadRandomTracks();
+        }
+        updateWaveUi();
+        renderRecentTracks();
+        binding.buttonSearch.setEnabled(isNetworkAvailable);
+        binding.buttonSearch.setAlpha(isNetworkAvailable ? 1f : 0.5f);
+    }
+
+    private void applyInitialNetworkState() {
+        if (shouldForceOfflineMode) {
+            shouldForceOfflineMode = false;
+            forceNetworkAvailability(false);
+            onNetworkAvailabilityChanged(false);
+            return;
+        }
+
+        refreshNetworkState(false);
+    }
+
+    @Override
+    protected void onCurrentTrackChanged(Track track) {
+        if (isWavePlaybackContext()) {
+            viewModel.onWaveTrackStarted(track);
+        }
+        currentWaveTrack = getWaveTrackForUi();
+    }
+
+    @Override
     protected List<Track> getPlaybackQueue() {
-        Track currentTrack = getCurrentTrack();
-        if (viewModel.isCurrentWaveTrack(currentTrack)) {
+        if (isWavePlaybackContext()) {
             List<Track> waveTracks = viewModel.getRandomTracks().getValue();
             return waveTracks == null ? new ArrayList<>() : new ArrayList<>(waveTracks);
         }
@@ -219,9 +331,30 @@ public class MainActivity extends BasePlayerActivity {
     }
 
     @Override
+    protected String resolvePlaybackSource(@Nullable Track track) {
+        String activePlaybackSource = getCurrentPlaybackSource();
+        if (MusicService.PLAYBACK_SOURCE_WAVE.equals(activePlaybackSource)) {
+            return MusicService.PLAYBACK_SOURCE_WAVE;
+        }
+        if (MusicService.PLAYBACK_SOURCE_RECENT.equals(activePlaybackSource)) {
+            return MusicService.PLAYBACK_SOURCE_RECENT;
+        }
+
+        return viewModel.isCurrentWaveTrack(track)
+                ? MusicService.PLAYBACK_SOURCE_WAVE
+                : MusicService.PLAYBACK_SOURCE_RECENT;
+    }
+
+    @Override
+    protected String resolvePlaybackSourceLabel(@Nullable Track track) {
+        return getString(MusicService.PLAYBACK_SOURCE_WAVE.equals(resolvePlaybackSource(track))
+                ? R.string.player_source_wave
+                : R.string.player_source_recent);
+    }
+
+    @Override
     protected void onPlaybackCompleted() {
-        Track currentTrack = getCurrentTrack();
-        if (!viewModel.isCurrentWaveTrack(currentTrack)) {
+        if (!isWavePlaybackContext()) {
             return;
         }
 
@@ -236,8 +369,10 @@ public class MainActivity extends BasePlayerActivity {
 
     @Override
     protected void playTrack(Track track) {
-        viewModel.onWaveTrackStarted(track);
-        currentWaveTrack = viewModel.getCurrentWaveTrack();
+        if (MusicService.PLAYBACK_SOURCE_WAVE.equals(resolvePlaybackSource(track))) {
+            viewModel.onWaveTrackStarted(track);
+            currentWaveTrack = viewModel.getCurrentWaveTrack();
+        }
         viewModel.onTrackClicked(track);
         super.playTrack(track);
         updateWaveUi();
@@ -245,31 +380,50 @@ public class MainActivity extends BasePlayerActivity {
 
     @Override
     public void onPreviousClicked() {
-        Track currentTrack = getCurrentTrack();
-        if (viewModel.isCurrentWaveTrack(currentTrack)) {
-            Track previousWaveTrack = viewModel.moveToPreviousWaveTrack();
-            if (previousWaveTrack != null) {
-                currentWaveTrack = previousWaveTrack;
-                playTrack(previousWaveTrack);
-            }
-            return;
-        }
-
         super.onPreviousClicked();
     }
 
     @Override
     public void onNextClicked() {
-        Track currentTrack = getCurrentTrack();
-        if (viewModel.isCurrentWaveTrack(currentTrack)) {
-            Track nextWaveTrack = viewModel.moveToNextWaveTrack();
-            if (nextWaveTrack != null) {
-                currentWaveTrack = nextWaveTrack;
-                playTrack(nextWaveTrack);
-            }
+        super.onNextClicked();
+    }
+
+    private boolean isWavePlaybackContext() {
+        return MusicService.PLAYBACK_SOURCE_WAVE.equals(getCurrentPlaybackSource());
+    }
+
+    private void renderRecentTracks() {
+        if (recentAdapter == null) {
             return;
         }
 
-        super.onNextClicked();
+        if (isNetworkAvailable()) {
+            recentAdapter.submitList(new ArrayList<>(recentTracksCache));
+            return;
+        }
+
+        List<Track> offlineRecentTracks = new ArrayList<>();
+        for (Track track : recentTracksCache) {
+            if (PlaybackAccessHelper.isOfflinePlayable(this, track)) {
+                offlineRecentTracks.add(track);
+            }
+        }
+        recentAdapter.submitList(offlineRecentTracks);
+    }
+
+    private void updateThemeButton() {
+        binding.buttonTheme.setText(ThemeManager.isDarkTheme(this)
+                ? R.string.theme_dark
+                : R.string.theme_light);
+    }
+
+    @Nullable
+    private Track getWaveTrackForUi() {
+        if (!isWavePlaybackContext()) {
+            return currentWaveTrack;
+        }
+
+        Track waveTrack = viewModel.getCurrentWaveTrack();
+        return waveTrack != null ? waveTrack : currentWaveTrack;
     }
 }

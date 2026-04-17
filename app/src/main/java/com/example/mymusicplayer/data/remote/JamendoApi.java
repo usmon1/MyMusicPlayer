@@ -15,4 +15,13 @@ public interface JamendoApi {
             @Query("offset") int offset,
             @Query("audioformat") String audioFormat
     );
+
+    @GET("tracks")
+    Call<JamendoResponse> searchTracks(
+            @Query("client_id") String clientId,
+            @Query("format") String format,
+            @Query("search") String search,
+            @Query("limit") int limit,
+            @Query("audioformat") String audioFormat
+    );
 }

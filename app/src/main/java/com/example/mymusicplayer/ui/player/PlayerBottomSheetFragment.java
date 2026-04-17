@@ -17,11 +17,6 @@ import androidx.annotation.Nullable;
 import com.example.mymusicplayer.R;
 import com.example.mymusicplayer.data.local.entity.Track;
 import com.example.mymusicplayer.databinding.FragmentPlayerBottomSheetBinding;
-import com.example.mymusicplayer.ui.downloaded.DownloadedActivity;
-import com.example.mymusicplayer.ui.local.LocalMusicActivity;
-import com.example.mymusicplayer.ui.main.MainActivity;
-import com.example.mymusicplayer.ui.playlist.PlaylistDetailsActivity;
-import com.example.mymusicplayer.ui.playlist.PlaylistListActivity;
 import com.google.android.material.bottomsheet.BottomSheetBehavior;
 import com.google.android.material.bottomsheet.BottomSheetDialog;
 import com.google.android.material.bottomsheet.BottomSheetDialogFragment;
@@ -53,6 +48,7 @@ public class PlayerBottomSheetFragment extends BottomSheetDialogFragment {
     private PlayerControlListener playerControlListener;
     private Track currentTrack;
     private boolean isPlaying;
+    private String playbackSource;
     private boolean isSeekInProgress;
 
     public static PlayerBottomSheetFragment newInstance() {
@@ -231,7 +227,7 @@ public class PlayerBottomSheetFragment extends BottomSheetDialogFragment {
                             : artist
             );
 
-            binding.textPlaybackSource.setText(resolvePlaybackSource());
+            binding.textPlaybackSource.setText(playbackSource == null ? "" : playbackSource);
             binding.seekBarProgress.setEnabled(true);
             loadCoverImage(currentTrack);
         }
@@ -255,9 +251,10 @@ public class PlayerBottomSheetFragment extends BottomSheetDialogFragment {
         updateProgressFromActivity();
     }
 
-    public void updatePlayerState(Track track, boolean isPlaying) {
+    public void updatePlayerState(Track track, boolean isPlaying, @Nullable String playbackSource) {
         this.currentTrack = track;
         this.isPlaying = isPlaying;
+        this.playbackSource = playbackSource;
         renderState();
     }
 
@@ -290,40 +287,6 @@ public class PlayerBottomSheetFragment extends BottomSheetDialogFragment {
 
         BasePlayerActivity activity = (BasePlayerActivity) getActivity();
         updatePlaybackProgress(activity.getPlaybackPosition(), activity.getPlaybackDuration());
-    }
-
-    private String resolvePlaybackSource() {
-        if (getActivity() instanceof PlaylistDetailsActivity) {
-            boolean isFavorites = requireActivity()
-                    .getIntent()
-                    .getBooleanExtra(PlaylistListActivity.EXTRA_IS_FAVORITES, false);
-            if (isFavorites) {
-                return getString(R.string.player_source_favorites);
-            }
-
-            String playlistName = requireActivity()
-                    .getIntent()
-                    .getStringExtra(PlaylistListActivity.EXTRA_PLAYLIST_NAME);
-            if (playlistName != null && !playlistName.trim().isEmpty()) {
-                return getString(R.string.player_source_playlist, playlistName);
-            }
-        }
-
-        if (getActivity() instanceof DownloadedActivity) {
-            return getString(R.string.player_source_downloaded);
-        }
-
-        if (getActivity() instanceof LocalMusicActivity) {
-            return getString(R.string.player_source_local_music);
-        }
-
-        if (getActivity() instanceof MainActivity
-                && currentTrack != null
-                && "JAMENDO".equals(currentTrack.getSourceType())) {
-            return getString(R.string.player_source_wave);
-        }
-
-        return "";
     }
 
     private void loadCoverImage(Track track) {

@@ -59,6 +59,7 @@ public class MainViewModel extends AndroidViewModel {
     private LiveData<List<Track>> selectedPlaylistTracksSource;
     private int currentWaveIndex = -1;
     private boolean isLoadingWaveBatch;
+    private boolean isNetworkAvailable = true;
 
     public MainViewModel(@NonNull Application application) {
         super(application);
@@ -134,6 +135,13 @@ public class MainViewModel extends AndroidViewModel {
     public void loadRandomTracks() {
         Log.d(TAG, "loadRandomTracks: queueSize=" + waveQueue.size()
                 + ", isLoadingWaveBatch=" + isLoadingWaveBatch);
+        if (!isNetworkAvailable) {
+            isLoadingWaveBatch = false;
+            isWaveLoading.setValue(false);
+            publishWaveQueue();
+            return;
+        }
+
         if (!waveQueue.isEmpty() || isLoadingWaveBatch) {
             publishWaveQueue();
             return;
@@ -168,7 +176,7 @@ public class MainViewModel extends AndroidViewModel {
         repository.saveTrack(track);
         currentPlayingTrack.setValue(track);
         isPlaying.setValue(true);
-        repository.updateLastPlayed(track.getId());
+        repository.updateLastPlayed(track);
     }
 
     public void toggleFavorite(Track track) {
@@ -250,6 +258,14 @@ public class MainViewModel extends AndroidViewModel {
 
     public void updateCurrentTrack(Track track) {
         currentPlayingTrack.setValue(track);
+    }
+
+    public void setNetworkAvailable(boolean networkAvailable) {
+        isNetworkAvailable = networkAvailable;
+        if (!networkAvailable) {
+            isLoadingWaveBatch = false;
+            isWaveLoading.setValue(false);
+        }
     }
 
     public Track getCurrentWaveTrack() {
@@ -344,7 +360,7 @@ public class MainViewModel extends AndroidViewModel {
     private void requestNextWaveBatch(int attempt) {
         Log.d(TAG, "requestNextWaveBatch: attempt=" + attempt
                 + ", isLoadingWaveBatch=" + isLoadingWaveBatch);
-        if (isLoadingWaveBatch) {
+        if (isLoadingWaveBatch || !isNetworkAvailable) {
             return;
         }
 

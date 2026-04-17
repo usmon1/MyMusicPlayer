@@ -3,6 +3,7 @@ package com.example.mymusicplayer.ui.playlist;
 import android.content.Intent;
 import android.os.Bundle;
 import android.widget.EditText;
+import android.widget.Toast;
 
 import androidx.annotation.Nullable;
 import androidx.appcompat.app.AlertDialog;
@@ -47,12 +48,30 @@ public class PlaylistListActivity extends BasePlayerActivity {
 
         binding.recyclerPlaylists.setLayoutManager(new LinearLayoutManager(this));
         binding.recyclerPlaylists.setAdapter(playlistAdapter);
+        setupSwipeRefresh(binding.swipeRefresh);
         setupPlayerUi(binding.miniPlayer, binding.textMiniPlayerTitle, binding.buttonMiniPlayerAction);
+        refreshNetworkState(false);
+        binding.buttonBack.setOnClickListener(view -> finish());
 
-        binding.buttonOpenFavorites.setOnClickListener(view -> openFavorites());
-        binding.buttonCreatePlaylist.setOnClickListener(view -> showCreatePlaylistDialog());
+        binding.buttonOpenFavorites.setOnClickListener(view -> {
+            if (requireOnlineFeature()) {
+                openFavorites();
+            }
+        });
+        binding.buttonCreatePlaylist.setOnClickListener(view -> {
+            if (requireOnlineFeature()) {
+                showCreatePlaylistDialog();
+            }
+        });
 
         viewModel.getPlaylists().observe(this, playlists -> {
+            if (!isNetworkAvailable()) {
+                playlistAdapter.submitList(null);
+                binding.textEmpty.setVisibility(android.view.View.VISIBLE);
+                binding.textEmpty.setText(R.string.message_feature_online_only);
+                return;
+            }
+
             playlistAdapter.submitList(playlists);
             binding.textEmpty.setVisibility(
                     playlists == null || playlists.isEmpty() ? android.view.View.VISIBLE : android.view.View.GONE
@@ -68,6 +87,10 @@ public class PlaylistListActivity extends BasePlayerActivity {
     }
 
     private void openPlaylistDetails(Playlist playlist) {
+        if (!requireOnlineFeature()) {
+            return;
+        }
+
         Intent intent = new Intent(this, PlaylistDetailsActivity.class);
         intent.putExtra(EXTRA_PLAYLIST_ID, playlist.getPlaylistId());
         intent.putExtra(EXTRA_PLAYLIST_NAME, playlist.getName());
@@ -92,6 +115,10 @@ public class PlaylistListActivity extends BasePlayerActivity {
     }
 
     private void showDeletePlaylistDialog(Playlist playlist) {
+        if (!requireOnlineFeature()) {
+            return;
+        }
+
         new AlertDialog.Builder(this)
                 .setTitle(R.string.dialog_delete_playlist_title)
                 .setMessage(getString(R.string.dialog_delete_playlist_message, playlist.getName()))
@@ -100,5 +127,38 @@ public class PlaylistListActivity extends BasePlayerActivity {
                 )
                 .setNegativeButton(R.string.action_cancel, null)
                 .show();
+    }
+
+    @Override
+    protected void onNetworkAvailabilityChanged(boolean isNetworkAvailable) {
+        if (binding == null) {
+            return;
+        }
+
+        binding.buttonOpenFavorites.setEnabled(isNetworkAvailable);
+        binding.buttonCreatePlaylist.setEnabled(isNetworkAvailable);
+        binding.recyclerPlaylists.setAlpha(isNetworkAvailable ? 1f : 0.5f);
+        if (!isNetworkAvailable) {
+            playlistAdapter.submitList(null);
+            binding.textEmpty.setVisibility(android.view.View.VISIBLE);
+            binding.textEmpty.setText(R.string.message_feature_online_only);
+            binding.recyclerPlaylists.setEnabled(false);
+            binding.buttonOpenFavorites.setClickable(false);
+            binding.buttonCreatePlaylist.setClickable(false);
+            return;
+        }
+
+        binding.recyclerPlaylists.setEnabled(true);
+        binding.buttonOpenFavorites.setClickable(true);
+        binding.buttonCreatePlaylist.setClickable(true);
+    }
+
+    private boolean requireOnlineFeature() {
+        if (isNetworkAvailable()) {
+            return true;
+        }
+
+        Toast.makeText(this, R.string.message_feature_online_only, Toast.LENGTH_SHORT).show();
+        return false;
     }
 }

@@ -21,6 +21,7 @@ import com.example.mymusicplayer.data.remote.ApiConfig;
 import com.example.mymusicplayer.data.remote.JamendoApi;
 import com.example.mymusicplayer.data.remote.JamendoResponse;
 import com.example.mymusicplayer.data.remote.RetrofitClient;
+import com.example.mymusicplayer.util.NetworkMonitor;
 
 import java.io.File;
 import java.io.FileOutputStream;
@@ -49,11 +50,13 @@ public class MusicRepository {
     private static final String TAG = "MusicRepository";
     private static final String SOURCE_TYPE_JAMENDO = "JAMENDO";
     private static final int JAMENDO_LIMIT = 10;
+    private static final int JAMENDO_SEARCH_LIMIT = 50;
     private static final String JAMENDO_RESPONSE_FORMAT = "json";
     private static final String JAMENDO_WAVE_ORDER = "popularity_total";
     private static final String JAMENDO_AUDIO_FORMAT = "mp32";
     private static final int JAMENDO_RANDOM_OFFSET_PAGES = 20;
 
+    private final Context appContext;
     private final TrackDao trackDao;
     private final PlaylistDao playlistDao;
     private final CrossRefDao crossRefDao;
@@ -65,7 +68,7 @@ public class MusicRepository {
     private final Random random;
 
     public MusicRepository(Context context) {
-        Context appContext = context.getApplicationContext();
+        this.appContext = context.getApplicationContext();
         AppDatabase appDatabase = AppDatabase.getInstance(appContext);
 
         this.trackDao = appDatabase.trackDao();
@@ -85,6 +88,11 @@ public class MusicRepository {
 
     public LiveData<List<Track>> getWaveTracks(int limit, int offset) {
         MutableLiveData<List<Track>> liveData = new MutableLiveData<>();
+
+        if (!NetworkMonitor.getInstance(appContext).isCurrentlyConnected()) {
+            liveData.setValue(new ArrayList<>());
+            return liveData;
+        }
 
         jamendoApi.getWaveTracks(
                         ApiConfig.CLIENT_ID,
@@ -107,7 +115,7 @@ public class MusicRepository {
                         List<Track> tracks = normalizeJamendoTracks(response.body().getResults());
                         Log.d(TAG, "Jamendo tracks loaded: " + tracks.size());
                         liveData.postValue(tracks);
-                        executorService.execute(() -> trackDao.insertAll(tracks));
+                        saveTracks(tracks);
                     }
 
                     @Override
@@ -123,6 +131,11 @@ public class MusicRepository {
 
     public LiveData<List<Track>> getRandomWaveTracks(int totalLimit, int requestCount) {
         MutableLiveData<List<Track>> liveData = new MutableLiveData<>();
+
+        if (!NetworkMonitor.getInstance(appContext).isCurrentlyConnected()) {
+            liveData.setValue(new ArrayList<>());
+            return liveData;
+        }
 
         int safeRequestCount = Math.max(1, requestCount);
         int requestLimit = Math.max(1, totalLimit / safeRequestCount);
@@ -195,7 +208,7 @@ public class MusicRepository {
         executorService.execute(() -> {
             List<Track> tracks = mediaStoreHelper.getAudioTracks();
             liveData.postValue(tracks);
-            trackDao.insertAll(tracks);
+            saveTracksSync(tracks);
         });
 
         return liveData;
@@ -213,8 +226,78 @@ public class MusicRepository {
         return trackDao.getRecentTracks();
     }
 
-    public void updateLastPlayed(String trackId) {
-        executorService.execute(() -> trackDao.updateLastPlayed(trackId, System.currentTimeMillis()));
+    public LiveData<List<Track>> searchTracks(String query) {
+        if (query == null) {
+            query = "";
+        }
+
+        return trackDao.searchTracks(query.trim());
+    }
+
+    public LiveData<List<Track>> searchTracksOnline(String query) {
+        MutableLiveData<List<Track>> liveData = new MutableLiveData<>(new ArrayList<>());
+
+        String trimmedQuery = query == null ? "" : query.trim();
+        if (trimmedQuery.isEmpty()) {
+            return liveData;
+        }
+
+        if (!NetworkMonitor.getInstance(appContext).isCurrentlyConnected()) {
+            return liveData;
+        }
+
+        jamendoApi.searchTracks(
+                        ApiConfig.CLIENT_ID,
+                        JAMENDO_RESPONSE_FORMAT,
+                        trimmedQuery,
+                        JAMENDO_SEARCH_LIMIT,
+                        JAMENDO_AUDIO_FORMAT
+                )
+                .enqueue(new retrofit2.Callback<JamendoResponse>() {
+                    @Override
+                    public void onResponse(@NonNull retrofit2.Call<JamendoResponse> call,
+                                           @NonNull retrofit2.Response<JamendoResponse> response) {
+                        if (!response.isSuccessful()
+                                || response.body() == null
+                                || response.body().getResults() == null) {
+                            liveData.postValue(new ArrayList<>());
+                            return;
+                        }
+
+                        liveData.postValue(normalizeJamendoTracks(response.body().getResults()));
+                    }
+
+                    @Override
+                    public void onFailure(@NonNull retrofit2.Call<JamendoResponse> call,
+                                          @NonNull Throwable throwable) {
+                        Log.e(TAG, "Jamendo search request error", throwable);
+                        liveData.postValue(new ArrayList<>());
+                    }
+                });
+
+        return liveData;
+    }
+
+    public Track getTrackByIdSync(String trackId) {
+        if (trackId == null || trackId.trim().isEmpty()) {
+            return null;
+        }
+
+        return trackDao.getTrackByIdSync(trackId);
+    }
+
+    public void updateLastPlayed(Track track) {
+        if (track == null || track.getId() == null || track.getId().trim().isEmpty()) {
+            return;
+        }
+
+        if (!NetworkMonitor.getInstance(appContext).isCurrentlyConnected()) {
+            return;
+        }
+
+        executorService.execute(() ->
+                trackDao.updateLastPlayed(track.getId(), System.currentTimeMillis())
+        );
     }
 
     public void addToFavorites(String trackId, boolean favorite) {
@@ -291,13 +374,20 @@ public class MusicRepository {
             return;
         }
 
-        executorService.execute(() -> trackDao.insert(track));
+        executorService.execute(() -> saveTrackSync(track));
     }
 
     public void downloadTrack(Track track, DownloadCallback callback) {
         if (track == null || track.getDataUri() == null || track.getDataUri().isEmpty()) {
             if (callback != null) {
                 callback.onError("Track url is empty.");
+            }
+            return;
+        }
+
+        if (!NetworkMonitor.getInstance(appContext).isCurrentlyConnected()) {
+            if (callback != null) {
+                callback.onError("No internet connection.");
             }
             return;
         }
@@ -350,9 +440,13 @@ public class MusicRepository {
                         track.setSourceType(SOURCE_TYPE_JAMENDO);
                         track.setDownloaded(true);
                         track.setDataUri(localUri);
-                        trackDao.insert(track);
+                        saveTrackSync(track);
                     } else {
-                        trackDao.updateDownloadedTrack(track.getId(), true, localUri);
+                        savedTrack.setSourceType(SOURCE_TYPE_JAMENDO);
+                        savedTrack.setDownloaded(true);
+                        savedTrack.setDataUri(localUri);
+                        mergeTrack(savedTrack, track);
+                        trackDao.update(savedTrack);
                     }
                 });
 
@@ -417,7 +511,86 @@ public class MusicRepository {
 
         Log.d(TAG, "Random Jamendo tracks loaded: " + result.size());
         liveData.postValue(result);
-        executorService.execute(() -> trackDao.insertAll(result));
+        saveTracks(result);
+    }
+
+    private void saveTracks(List<Track> tracks) {
+        executorService.execute(() -> saveTracksSync(tracks));
+    }
+
+    private void saveTracksSync(List<Track> tracks) {
+        if (tracks == null || tracks.isEmpty()) {
+            return;
+        }
+
+        for (Track track : tracks) {
+            saveTrackSync(track);
+        }
+    }
+
+    private void saveTrackSync(Track track) {
+        if (track == null || track.getId() == null || track.getId().trim().isEmpty()) {
+            return;
+        }
+
+        Track existingTrack = trackDao.getTrackByIdSync(track.getId());
+        if (existingTrack == null) {
+            trackDao.insert(track);
+            return;
+        }
+
+        mergeTrack(existingTrack, track);
+        trackDao.update(existingTrack);
+    }
+
+    private void mergeTrack(Track target, Track source) {
+        if (target == null || source == null) {
+            return;
+        }
+
+        boolean targetHasLocalDownloadedUri = target.isDownloaded()
+                && target.getDataUri() != null
+                && (target.getDataUri().startsWith("file:")
+                || target.getDataUri().startsWith("content:"));
+        boolean sourceHasLocalDownloadedUri = source.isDownloaded()
+                && source.getDataUri() != null
+                && (source.getDataUri().startsWith("file:")
+                || source.getDataUri().startsWith("content:"));
+
+        if (source.getTitle() != null && !source.getTitle().trim().isEmpty()) {
+            target.setTitle(source.getTitle());
+        }
+
+        if (source.getArtist() != null && !source.getArtist().trim().isEmpty()) {
+            target.setArtist(source.getArtist());
+        }
+
+        if (sourceHasLocalDownloadedUri) {
+            target.setDataUri(source.getDataUri());
+        } else if (!targetHasLocalDownloadedUri
+                && source.getDataUri() != null
+                && !source.getDataUri().trim().isEmpty()) {
+            target.setDataUri(source.getDataUri());
+        }
+
+        if (source.getImageUrl() != null && !source.getImageUrl().trim().isEmpty()) {
+            target.setImageUrl(source.getImageUrl());
+        }
+
+        if (source.getDuration() > 0L) {
+            target.setDuration(source.getDuration());
+        }
+
+        if (source.getSourceType() != null && !source.getSourceType().trim().isEmpty()) {
+            target.setSourceType(source.getSourceType());
+        }
+
+        target.setFavorite(source.isFavorite() || target.isFavorite());
+        target.setDownloaded(source.isDownloaded() || target.isDownloaded());
+
+        if (source.getLastPlayed() > 0L) {
+            target.setLastPlayed(source.getLastPlayed());
+        }
     }
 
     public interface DownloadCallback {

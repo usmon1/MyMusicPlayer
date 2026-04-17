@@ -14,11 +14,11 @@ import java.util.List;
 @Dao
 public interface TrackDao {
 
-    @Insert(onConflict = OnConflictStrategy.REPLACE)
-    void insert(Track track);
+    @Insert(onConflict = OnConflictStrategy.IGNORE)
+    long insert(Track track);
 
-    @Insert(onConflict = OnConflictStrategy.REPLACE)
-    void insertAll(List<Track> tracks);
+    @Insert(onConflict = OnConflictStrategy.IGNORE)
+    long[] insertAll(List<Track> tracks);
 
     @Update
     void update(Track track);
@@ -40,6 +40,12 @@ public interface TrackDao {
 
     @Query("SELECT * FROM tracks WHERE lastPlayed > 0 ORDER BY lastPlayed DESC LIMIT 10")
     LiveData<List<Track>> getRecentTracks();
+
+    @Query("SELECT * FROM tracks " +
+            "WHERE title LIKE '%' || :query || '%' " +
+            "OR artist LIKE '%' || :query || '%' " +
+            "ORDER BY lastPlayed DESC, title ASC LIMIT 100")
+    LiveData<List<Track>> searchTracks(String query);
 
     @Query("UPDATE tracks SET isFavorite = :isFavorite WHERE id = :trackId")
     void updateFavoriteState(String trackId, boolean isFavorite);

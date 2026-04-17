@@ -92,86 +92,57 @@
         </LinearLayout>
     </com.google.android.material.card.MaterialCardView>
 
-    <androidx.core.widget.NestedScrollView
-        android:id="@+id/contentScroll"
+    <androidx.swiperefreshlayout.widget.SwipeRefreshLayout
+        android:id="@+id/swipeRefresh"
         android:layout_width="0dp"
         android:layout_height="0dp"
-        android:fillViewport="true"
         app:layout_constraintBottom_toTopOf="@id/miniPlayer"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="parent">
 
-        <LinearLayout
+        <androidx.core.widget.NestedScrollView
+            android:id="@+id/contentScroll"
             android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:orientation="vertical"
-            android:padding="16dp">
+            android:layout_height="match_parent"
+            android:fillViewport="true">
 
-            <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="@string/section_wave"
-                android:textAppearance="@style/TextAppearance.Material3.TitleLarge" />
-
-            <com.google.android.material.card.MaterialCardView
-                android:id="@+id/cardWave"
+            <LinearLayout
                 android:layout_width="match_parent"
-                android:layout_height="500dp"
-                android:layout_marginTop="12dp"
-                app:cardCornerRadius="24dp"
-                app:cardElevation="3dp">
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:padding="16dp">
 
                 <LinearLayout
                     android:layout_width="match_parent"
-                    android:layout_height="match_parent"
-                    android:gravity="center"
-                    android:orientation="vertical"
-                    android:padding="2dp">
-
-                    <TextView
-                        android:id="@+id/textWaveTitle"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="@string/wave_title"
-                        android:textAppearance="@style/TextAppearance.Material3.HeadlineSmall" />
-
-                    <TextView
-                        android:id="@+id/textWaveSubtitle"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:layout_marginTop="8dp"
-                        android:gravity="center"
-                        android:text="@string/wave_subtitle_loading"
-                        android:textAppearance="@style/TextAppearance.Material3.BodyLarge"
-                        tools:text="Р—Р°РїСѓСЃС‚РёС‚Рµ СЃР»СѓС‡Р°Р№РЅС‹Р№ РїРѕС‚РѕРє РјСѓР·С‹РєРё" />
+                    android:layout_height="wrap_content"
+                    android:gravity="center_vertical"
+                    android:orientation="horizontal">
 
                     <Button
-                        android:id="@+id/buttonWaveAction"
-                        android:layout_width="120dp"
-                        android:layout_height="120dp"
-                        android:layout_marginTop="20dp"
-                        android:enabled="false"
-                        android:text="@string/play"
-                        android:textAppearance="@style/TextAppearance.Material3.TitleLarge" />
+                        android:id="@+id/buttonTheme"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:minWidth="0dp"
+                        android:text="@string/theme_light" />
+
+                    <Button
+                        android:id="@+id/buttonSearch"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginStart="12dp"
+                        android:layout_weight="1"
+                        android:gravity="end|center_vertical"
+                        android:minWidth="0dp"
+                        android:text="@string/action_search" />
                 </LinearLayout>
-            </com.google.android.material.card.MaterialCardView>
-
-            <LinearLayout
-                android:id="@+id/layoutSections"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="20dp"
-                android:orientation="horizontal">
 
                 <com.google.android.material.card.MaterialCardView
-                    android:id="@+id/cardPlaylists"
-                    android:layout_width="0dp"
-                    android:layout_height="96dp"
-                    android:layout_weight="1"
-                    android:clickable="true"
-                    android:focusable="true"
-                    app:cardCornerRadius="16dp"
+                    android:id="@+id/cardWave"
+                    android:layout_width="match_parent"
+                    android:layout_height="500dp"
+                    android:layout_marginTop="16dp"
+                    app:cardCornerRadius="24dp"
                     app:cardElevation="3dp">
 
                     <LinearLayout
@@ -179,88 +150,141 @@
                         android:layout_height="match_parent"
                         android:gravity="center"
                         android:orientation="vertical"
-                        android:padding="12dp">
+                        android:padding="2dp">
 
                         <TextView
+                            android:id="@+id/textWaveTitle"
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
+                            android:text="@string/wave_title"
+                            android:textAppearance="@style/TextAppearance.Material3.HeadlineSmall" />
+
+                        <TextView
+                            android:id="@+id/textWaveSubtitle"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="8dp"
                             android:gravity="center"
-                            android:text="@string/card_playlists"
-                            android:textAppearance="@style/TextAppearance.Material3.TitleMedium" />
+                            android:text="@string/wave_subtitle_loading"
+                            android:textAppearance="@style/TextAppearance.Material3.BodyLarge"
+                            tools:text="Р вЂ”Р В°Р С—РЎС“РЎРѓРЎвЂљР С‘РЎвЂљР Вµ РЎРѓР В»РЎС“РЎвЂЎР В°Р в„–Р Р…РЎвЂ№Р в„– Р С—Р С•РЎвЂљР С•Р С” Р СРЎС“Р В·РЎвЂ№Р С”Р С‘" />
+
+                        <Button
+                            android:id="@+id/buttonWaveAction"
+                            android:layout_width="120dp"
+                            android:layout_height="120dp"
+                            android:layout_marginTop="20dp"
+                            android:enabled="false"
+                            android:text="@string/play"
+                            android:textAppearance="@style/TextAppearance.Material3.TitleLarge" />
                     </LinearLayout>
                 </com.google.android.material.card.MaterialCardView>
 
-                <com.google.android.material.card.MaterialCardView
-                    android:id="@+id/cardLocalMusic"
-                    android:layout_width="0dp"
-                    android:layout_height="96dp"
-                    android:layout_marginStart="12dp"
-                    android:layout_weight="1"
-                    android:clickable="true"
-                    android:focusable="true"
-                    app:cardCornerRadius="16dp"
-                    app:cardElevation="3dp">
+                <LinearLayout
+                    android:id="@+id/layoutSections"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="20dp"
+                    android:orientation="horizontal">
 
-                    <LinearLayout
-                        android:layout_width="match_parent"
-                        android:layout_height="match_parent"
-                        android:gravity="center"
-                        android:orientation="vertical"
-                        android:padding="12dp">
+                    <com.google.android.material.card.MaterialCardView
+                        android:id="@+id/cardPlaylists"
+                        android:layout_width="0dp"
+                        android:layout_height="96dp"
+                        android:layout_weight="1"
+                        android:clickable="true"
+                        android:focusable="true"
+                        app:cardCornerRadius="16dp"
+                        app:cardElevation="3dp">
 
-                        <TextView
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
+                        <LinearLayout
+                            android:layout_width="match_parent"
+                            android:layout_height="match_parent"
                             android:gravity="center"
-                            android:text="@string/card_local_music"
-                            android:textAppearance="@style/TextAppearance.Material3.TitleMedium" />
-                    </LinearLayout>
-                </com.google.android.material.card.MaterialCardView>
+                            android:orientation="vertical"
+                            android:padding="12dp">
 
-                <com.google.android.material.card.MaterialCardView
-                    android:id="@+id/cardDownloaded"
-                    android:layout_width="0dp"
-                    android:layout_height="96dp"
-                    android:layout_marginStart="12dp"
-                    android:layout_weight="1"
-                    android:clickable="true"
-                    android:focusable="true"
-                    app:cardCornerRadius="16dp"
-                    app:cardElevation="3dp">
+                            <TextView
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:gravity="center"
+                                android:text="@string/card_playlists"
+                                android:textAppearance="@style/TextAppearance.Material3.TitleMedium" />
+                        </LinearLayout>
+                    </com.google.android.material.card.MaterialCardView>
 
-                    <LinearLayout
-                        android:layout_width="match_parent"
-                        android:layout_height="match_parent"
-                        android:gravity="center"
-                        android:orientation="vertical"
-                        android:padding="12dp">
+                    <com.google.android.material.card.MaterialCardView
+                        android:id="@+id/cardLocalMusic"
+                        android:layout_width="0dp"
+                        android:layout_height="96dp"
+                        android:layout_marginStart="12dp"
+                        android:layout_weight="1"
+                        android:clickable="true"
+                        android:focusable="true"
+                        app:cardCornerRadius="16dp"
+                        app:cardElevation="3dp">
 
-                        <TextView
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
+                        <LinearLayout
+                            android:layout_width="match_parent"
+                            android:layout_height="match_parent"
                             android:gravity="center"
-                            android:text="@string/card_downloaded"
-                            android:textAppearance="@style/TextAppearance.Material3.TitleMedium" />
-                    </LinearLayout>
-                </com.google.android.material.card.MaterialCardView>
+                            android:orientation="vertical"
+                            android:padding="12dp">
+
+                            <TextView
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:gravity="center"
+                                android:text="@string/card_local_music"
+                                android:textAppearance="@style/TextAppearance.Material3.TitleMedium" />
+                        </LinearLayout>
+                    </com.google.android.material.card.MaterialCardView>
+
+                    <com.google.android.material.card.MaterialCardView
+                        android:id="@+id/cardDownloaded"
+                        android:layout_width="0dp"
+                        android:layout_height="96dp"
+                        android:layout_marginStart="12dp"
+                        android:layout_weight="1"
+                        android:clickable="true"
+                        android:focusable="true"
+                        app:cardCornerRadius="16dp"
+                        app:cardElevation="3dp">
+
+                        <LinearLayout
+                            android:layout_width="match_parent"
+                            android:layout_height="match_parent"
+                            android:gravity="center"
+                            android:orientation="vertical"
+                            android:padding="12dp">
+
+                            <TextView
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:gravity="center"
+                                android:text="@string/card_downloaded"
+                                android:textAppearance="@style/TextAppearance.Material3.TitleMedium" />
+                        </LinearLayout>
+                    </com.google.android.material.card.MaterialCardView>
+                </LinearLayout>
+
+                <TextView
+                    android:id="@+id/textRecentPlaceholder"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="24dp"
+                    android:text="@string/section_recent"
+                    android:textAppearance="@style/TextAppearance.Material3.TitleLarge" />
+
+                <androidx.recyclerview.widget.RecyclerView
+                    android:id="@+id/recyclerRecent"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="12dp"
+                    android:nestedScrollingEnabled="false"
+                    tools:listitem="@layout/item_track" />
             </LinearLayout>
-
-            <TextView
-                android:id="@+id/textRecentPlaceholder"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="24dp"
-                android:text="@string/section_recent"
-                android:textAppearance="@style/TextAppearance.Material3.TitleLarge" />
-
-            <androidx.recyclerview.widget.RecyclerView
-                android:id="@+id/recyclerRecent"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="12dp"
-                android:nestedScrollingEnabled="false"
-                tools:listitem="@layout/item_track" />
-        </LinearLayout>
-    </androidx.core.widget.NestedScrollView>
+        </androidx.core.widget.NestedScrollView>
+    </androidx.swiperefreshlayout.widget.SwipeRefreshLayout>
 
 </androidx.constraintlayout.widget.ConstraintLayout>
