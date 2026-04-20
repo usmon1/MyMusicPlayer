@@ -444,6 +444,21 @@ public abstract class BasePlayerActivity extends AppCompatActivity
     }
 
     protected void onPlaybackCompleted() {
+        String playbackSource = getCurrentPlaybackSource();
+        if (playbackSource == null
+                || MusicService.PLAYBACK_SOURCE_SEARCH.equals(playbackSource)
+                || MusicService.PLAYBACK_SOURCE_RECENT.equals(playbackSource)) {
+            return;
+        }
+
+        if (!ownsPlaybackSource(playbackSource)) {
+            return;
+        }
+
+        Track nextTrack = getAdjacentTrack(1);
+        if (nextTrack != null) {
+            playTrack(nextTrack);
+        }
     }
 
     @Override
