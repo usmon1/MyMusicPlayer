@@ -244,7 +244,7 @@ public class PlayerBottomSheetFragment extends BottomSheetDialogFragment {
             binding.seekBarProgress.setProgress(0);
             binding.seekBarProgress.setEnabled(false);
             binding.imageAlbumCover.setTag(null);
-            binding.imageAlbumCover.setImageResource(R.drawable.ic_player_placeholder);
+            binding.imageAlbumCover.setImageResource(R.drawable.img);
         } else {
             binding.textCollapsedTitle.setText(currentTrack.getTitle());
             binding.textExpandedTitle.setText(currentTrack.getTitle());
@@ -365,7 +365,7 @@ public class PlayerBottomSheetFragment extends BottomSheetDialogFragment {
     }
 
     private void loadCoverImage(Track track) {
-        binding.imageAlbumCover.setImageResource(R.drawable.ic_player_placeholder);
+        binding.imageAlbumCover.setImageResource(R.drawable.img);
 
         if (track == null) {
             binding.imageAlbumCover.setTag(null);
@@ -408,7 +408,7 @@ public class PlayerBottomSheetFragment extends BottomSheetDialogFragment {
                 if (finalBitmap != null) {
                     binding.imageAlbumCover.setImageBitmap(finalBitmap);
                 } else {
-                    binding.imageAlbumCover.setImageResource(R.drawable.ic_player_placeholder);
+                    binding.imageAlbumCover.setImageResource(R.drawable.img);
                 }
             });
         }).start();

@@ -52,7 +52,7 @@
                     android:background="@drawable/bg_player_cover"
                     android:padding="7dp"
                     android:scaleType="centerCrop"
-                    android:src="@drawable/ic_player_placeholder"
+                    android:src="@drawable/img"
                     tools:ignore="ContentDescription" />
 
                 <LinearLayout

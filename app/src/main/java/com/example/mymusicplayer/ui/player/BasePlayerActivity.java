@@ -493,7 +493,7 @@ public abstract class BasePlayerActivity extends AppCompatActivity
             }
             if (miniPlayerCoverView != null) {
                 miniPlayerCoverView.setTag(null);
-                miniPlayerCoverView.setImageResource(R.drawable.ic_player_placeholder);
+                miniPlayerCoverView.setImageResource(R.drawable.img);
             }
         } else {
             miniPlayerTitleView.setText(currentTrack.getTitle());
@@ -849,7 +849,7 @@ public abstract class BasePlayerActivity extends AppCompatActivity
             return;
         }
 
-        miniPlayerCoverView.setImageResource(R.drawable.ic_player_placeholder);
+        miniPlayerCoverView.setImageResource(R.drawable.img);
         if (track == null) {
             miniPlayerCoverView.setTag(null);
             return;
@@ -890,7 +890,7 @@ public abstract class BasePlayerActivity extends AppCompatActivity
                 if (finalBitmap != null) {
                     miniPlayerCoverView.setImageBitmap(finalBitmap);
                 } else {
-                    miniPlayerCoverView.setImageResource(R.drawable.ic_player_placeholder);
+                    miniPlayerCoverView.setImageResource(R.drawable.img);
                 }
             });
         }).start();

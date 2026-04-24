@@ -56,7 +56,7 @@
         android:elevation="2dp"
         android:padding="30dp"
         android:scaleType="centerCrop"
-        android:src="@drawable/ic_player_placeholder"
+        android:src="@drawable/img"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toBottomOf="@id/textPlaybackSource"

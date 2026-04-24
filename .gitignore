@@ -13,4 +13,4 @@
 *.ap_
 *.jks
 *.keystore
-/docs
+/docs/project_state.md
