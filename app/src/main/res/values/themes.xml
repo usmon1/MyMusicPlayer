@@ -1,8 +1,22 @@
 <resources xmlns:tools="http://schemas.android.com/tools">
-    <!-- Base application theme. -->
     <style name="Base.Theme.MyMusicPlayer" parent="Theme.Material3.DayNight.NoActionBar">
-        <!-- Customize your light theme here. -->
-        <!-- <item name="colorPrimary">@color/my_light_primary</item> -->
+        <item name="colorPrimary">@color/app_accent</item>
+        <item name="colorOnPrimary">@color/app_accent_on</item>
+        <item name="colorSecondary">@color/app_accent_dark</item>
+        <item name="colorOnSecondary">@color/app_accent_on</item>
+        <item name="colorOnBackground">@color/app_text_primary</item>
+        <item name="colorSurface">@color/app_surface</item>
+        <item name="colorOnSurface">@color/app_text_primary</item>
+        <item name="colorSurfaceContainer">@color/app_surface_alt</item>
+        <item name="colorSurfaceVariant">@color/app_surface_alt</item>
+        <item name="colorOnSurfaceVariant">@color/app_text_secondary</item>
+        <item name="colorOutline">@color/app_outline</item>
+        <item name="android:colorBackground">@color/app_background</item>
+        <item name="android:windowBackground">@color/app_background</item>
+        <item name="android:statusBarColor">@android:color/transparent</item>
+        <item name="android:navigationBarColor">@color/app_background</item>
+        <item name="android:textColorPrimary">@color/app_text_primary</item>
+        <item name="android:textColorSecondary">@color/app_text_secondary</item>
     </style>
 
     <style name="Theme.MyMusicPlayer" parent="Base.Theme.MyMusicPlayer" />

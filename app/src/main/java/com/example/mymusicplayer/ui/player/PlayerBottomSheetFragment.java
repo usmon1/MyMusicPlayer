@@ -7,6 +7,7 @@ import android.net.Uri;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
+import android.text.TextUtils;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -17,6 +18,8 @@ import androidx.annotation.Nullable;
 import com.example.mymusicplayer.R;
 import com.example.mymusicplayer.data.local.entity.Track;
 import com.example.mymusicplayer.databinding.FragmentPlayerBottomSheetBinding;
+import com.example.mymusicplayer.playback.MusicService;
+import com.google.android.material.button.MaterialButton;
 import com.google.android.material.bottomsheet.BottomSheetBehavior;
 import com.google.android.material.bottomsheet.BottomSheetDialog;
 import com.google.android.material.bottomsheet.BottomSheetDialogFragment;
@@ -32,6 +35,9 @@ public class PlayerBottomSheetFragment extends BottomSheetDialogFragment {
 
     public static final String TAG = "PlayerBottomSheet";
     private static final long PROGRESS_UPDATE_DELAY_MS = 500L;
+    private static final long MOTION_SHORT_DURATION_MS = 140L;
+    private static final long MOTION_MEDIUM_DURATION_MS = 220L;
+    private static final float PRESSED_SCALE = 0.96f;
 
     private final Handler progressHandler = new Handler(Looper.getMainLooper());
     private final Runnable progressRunnable = new Runnable() {
@@ -50,6 +56,8 @@ public class PlayerBottomSheetFragment extends BottomSheetDialogFragment {
     private boolean isPlaying;
     private String playbackSource;
     private boolean isSeekInProgress;
+    private String lastRenderedTrackId;
+    private Boolean lastRenderedPlayState;
 
     public static PlayerBottomSheetFragment newInstance() {
         return new PlayerBottomSheetFragment();
@@ -103,6 +111,13 @@ public class PlayerBottomSheetFragment extends BottomSheetDialogFragment {
             behavior.setFitToContents(true);
             behavior.setState(BottomSheetBehavior.STATE_EXPANDED);
             updateExpandedVisibility(true);
+            bottomSheet.setAlpha(0f);
+            bottomSheet.setTranslationY(36f);
+            bottomSheet.animate()
+                    .alpha(1f)
+                    .translationY(0f)
+                    .setDuration(MOTION_MEDIUM_DURATION_MS)
+                    .start();
         });
 
         behavior.addBottomSheetCallback(new BottomSheetBehavior.BottomSheetCallback() {
@@ -127,6 +142,7 @@ public class PlayerBottomSheetFragment extends BottomSheetDialogFragment {
     }
 
     private void setupUi() {
+        binding.textExpandedTitle.setSelected(true);
         binding.buttonCollapsedPlayPause.setOnClickListener(view -> notifyPlayPauseClick());
         binding.buttonExpandedPlayPause.setOnClickListener(view -> notifyPlayPauseClick());
         binding.buttonFavorite.setOnClickListener(view -> notifyFavoriteClick());
@@ -155,6 +171,13 @@ public class PlayerBottomSheetFragment extends BottomSheetDialogFragment {
                 }
             }
         });
+        applyPressMotion(binding.buttonCollapsedPlayPause);
+        applyPressMotion(binding.buttonExpandedPlayPause);
+        applyPressMotion(binding.buttonFavorite);
+        applyPressMotion(binding.buttonAddToPlaylist);
+        applyPressMotion(binding.buttonDownload);
+        applyPressMotion(binding.buttonPrevious);
+        applyPressMotion(binding.buttonNext);
     }
 
     private void notifyPlayPauseClick() {
@@ -204,11 +227,17 @@ public class PlayerBottomSheetFragment extends BottomSheetDialogFragment {
             return;
         }
 
+        String currentTrackId = currentTrack == null ? null : currentTrack.getId();
+        boolean trackChanged = currentTrackId != null && !currentTrackId.equals(lastRenderedTrackId);
+        boolean playStateChanged = lastRenderedPlayState != null && lastRenderedPlayState != isPlaying;
+
         if (currentTrack == null) {
             binding.textCollapsedTitle.setText(R.string.mini_player_idle);
             binding.textExpandedTitle.setText(R.string.mini_player_idle);
+            binding.textExpandedTitle.setSelected(true);
             binding.textExpandedArtist.setText(R.string.no_artist);
             binding.textPlaybackSource.setText("");
+            binding.textPlaybackSource.setVisibility(View.GONE);
             binding.textCurrentTime.setText(R.string.player_time_zero);
             binding.textTotalDuration.setText(R.string.player_time_zero);
             binding.seekBarProgress.setMax(100);
@@ -219,6 +248,7 @@ public class PlayerBottomSheetFragment extends BottomSheetDialogFragment {
         } else {
             binding.textCollapsedTitle.setText(currentTrack.getTitle());
             binding.textExpandedTitle.setText(currentTrack.getTitle());
+            binding.textExpandedTitle.setSelected(true);
 
             String artist = currentTrack.getArtist();
             binding.textExpandedArtist.setText(
@@ -228,27 +258,52 @@ public class PlayerBottomSheetFragment extends BottomSheetDialogFragment {
             );
 
             binding.textPlaybackSource.setText(playbackSource == null ? "" : playbackSource);
+            binding.textPlaybackSource.setVisibility(
+                    TextUtils.isEmpty(playbackSource) ? View.GONE : View.VISIBLE
+            );
             binding.seekBarProgress.setEnabled(true);
             loadCoverImage(currentTrack);
         }
 
-        int playPauseText = isPlaying ? R.string.pause : R.string.play;
-        binding.buttonCollapsedPlayPause.setText(playPauseText);
-        binding.buttonExpandedPlayPause.setText(playPauseText);
-        binding.buttonFavorite.setText(
-                currentTrack != null && currentTrack.isFavorite()
-                        ? R.string.player_action_favorite_on_symbol
-                        : R.string.player_action_favorite_off_symbol
-        );
+        updatePlayPauseButton(binding.buttonCollapsedPlayPause, isPlaying);
+        updatePlayPauseButton(binding.buttonExpandedPlayPause, isPlaying);
+        binding.buttonCollapsedPlayPause.setEnabled(currentTrack != null);
+        binding.buttonExpandedPlayPause.setEnabled(currentTrack != null);
+        binding.buttonCollapsedPlayPause.setAlpha(currentTrack == null ? 0.5f : 1f);
+        binding.buttonExpandedPlayPause.setAlpha(currentTrack == null ? 0.5f : 1f);
+        animatePlaybackButton(binding.buttonCollapsedPlayPause, playStateChanged && currentTrack != null);
+        animatePlaybackButton(binding.buttonExpandedPlayPause, playStateChanged && currentTrack != null);
 
-        binding.buttonDownload.setEnabled(currentTrack != null && !currentTrack.isDownloaded());
-        if (currentTrack != null && currentTrack.isDownloaded()) {
-            binding.buttonDownload.setText(R.string.player_action_downloaded_symbol);
-        } else {
-            binding.buttonDownload.setText(R.string.player_action_download_symbol);
-        }
+        boolean isFavorite = currentTrack != null && currentTrack.isFavorite();
+        binding.buttonFavorite.setIconResource(
+                isFavorite ? R.drawable.ic_favorite_filled : R.drawable.ic_favorite_outline
+        );
+        binding.buttonFavorite.setContentDescription(getString(
+                isFavorite ? R.string.action_favorite_remove : R.string.action_favorite_add
+        ));
+        binding.buttonFavorite.setEnabled(currentTrack != null);
+        binding.buttonFavorite.setSelected(isFavorite);
+        binding.buttonFavorite.setAlpha(currentTrack == null ? 0.5f : 1f);
+
+        boolean isDownloaded = currentTrack != null && currentTrack.isDownloaded();
+        boolean isLocalPlayback = MusicService.PLAYBACK_SOURCE_LOCAL.equals(playbackSource);
+        binding.buttonDownload.setVisibility(isLocalPlayback ? View.GONE : View.VISIBLE);
+        binding.buttonDownload.setEnabled(currentTrack != null && !isDownloaded && !isLocalPlayback);
+        binding.buttonDownload.setSelected(isDownloaded);
+        binding.buttonDownload.setAlpha(currentTrack == null ? 0.5f : (isDownloaded ? 0.7f : 1f));
+        binding.buttonDownload.setIconResource(
+                isDownloaded ? R.drawable.ic_download_done : R.drawable.ic_download_simple
+        );
+        binding.buttonDownload.setContentDescription(getString(
+                isDownloaded ? R.string.action_downloaded : R.string.action_download
+        ));
+
+        updateNavigationState();
 
         updateProgressFromActivity();
+        animateTrackState(trackChanged);
+        lastRenderedTrackId = currentTrackId;
+        lastRenderedPlayState = isPlaying;
     }
 
     public void updatePlayerState(Track track, boolean isPlaying, @Nullable String playbackSource) {
@@ -286,7 +341,27 @@ public class PlayerBottomSheetFragment extends BottomSheetDialogFragment {
         }
 
         BasePlayerActivity activity = (BasePlayerActivity) getActivity();
+        updateNavigationState();
         updatePlaybackProgress(activity.getPlaybackPosition(), activity.getPlaybackDuration());
+    }
+
+    private void updateNavigationState() {
+        if (binding == null) {
+            return;
+        }
+
+        boolean canGoPrevious = false;
+        boolean canGoNext = false;
+        if (getActivity() instanceof BasePlayerActivity) {
+            BasePlayerActivity activity = (BasePlayerActivity) getActivity();
+            canGoPrevious = activity.canSkipToPrevious();
+            canGoNext = activity.canSkipToNext();
+        }
+
+        binding.buttonPrevious.setEnabled(canGoPrevious);
+        binding.buttonNext.setEnabled(canGoNext);
+        binding.buttonPrevious.setAlpha(canGoPrevious ? 1f : 0.4f);
+        binding.buttonNext.setAlpha(canGoNext ? 1f : 0.4f);
     }
 
     private void loadCoverImage(Track track) {
@@ -345,6 +420,95 @@ public class PlayerBottomSheetFragment extends BottomSheetDialogFragment {
         long minutes = totalSeconds / 60L;
         long seconds = totalSeconds % 60L;
         return String.format(Locale.getDefault(), "%02d:%02d", minutes, seconds);
+    }
+
+    private void applyPressMotion(@Nullable View view) {
+        if (view == null) {
+            return;
+        }
+
+        view.setOnTouchListener((pressedView, event) -> {
+            switch (event.getActionMasked()) {
+                case android.view.MotionEvent.ACTION_DOWN:
+                    pressedView.animate()
+                            .scaleX(PRESSED_SCALE)
+                            .scaleY(PRESSED_SCALE)
+                            .setDuration(MOTION_SHORT_DURATION_MS)
+                            .start();
+                    break;
+                case android.view.MotionEvent.ACTION_UP:
+                case android.view.MotionEvent.ACTION_CANCEL:
+                    pressedView.animate()
+                            .scaleX(1f)
+                            .scaleY(1f)
+                            .setDuration(MOTION_SHORT_DURATION_MS)
+                            .start();
+                    break;
+                default:
+                    break;
+            }
+            return false;
+        });
+    }
+
+    private void animateTrackState(boolean trackChanged) {
+        if (!trackChanged || binding == null) {
+            return;
+        }
+
+        animateTrackView(binding.textPlaybackSource);
+        animateTrackView(binding.textExpandedTitle);
+        animateTrackView(binding.textExpandedArtist);
+
+        binding.imageAlbumCover.setScaleX(0.94f);
+        binding.imageAlbumCover.setScaleY(0.94f);
+        binding.imageAlbumCover.setAlpha(0.55f);
+        binding.imageAlbumCover.animate()
+                .scaleX(1f)
+                .scaleY(1f)
+                .alpha(1f)
+                .setDuration(MOTION_MEDIUM_DURATION_MS)
+                .start();
+    }
+
+    private void animateTrackView(@Nullable View view) {
+        if (view == null) {
+            return;
+        }
+
+        view.setAlpha(0.35f);
+        view.setTranslationY(12f);
+        view.animate()
+                .alpha(1f)
+                .translationY(0f)
+                .setDuration(MOTION_MEDIUM_DURATION_MS)
+                .start();
+    }
+
+    private void animatePlaybackButton(@Nullable View button, boolean shouldAnimate) {
+        if (button == null || !shouldAnimate) {
+            return;
+        }
+
+        button.animate().cancel();
+        button.setScaleX(0.9f);
+        button.setScaleY(0.9f);
+        button.setAlpha(0.72f);
+        button.animate()
+                .scaleX(1f)
+                .scaleY(1f)
+                .alpha(1f)
+                .setDuration(MOTION_MEDIUM_DURATION_MS)
+                .start();
+    }
+
+    private void updatePlayPauseButton(@Nullable MaterialButton button, boolean playing) {
+        if (button == null) {
+            return;
+        }
+
+        button.setIconResource(playing ? R.drawable.ic_pause : R.drawable.ic_play_arrow);
+        button.setContentDescription(getString(playing ? R.string.pause : R.string.play));
     }
 
     @Override

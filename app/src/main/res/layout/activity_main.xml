@@ -5,15 +5,15 @@
     android:id="@+id/main"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
+    android:background="@color/app_background"
     tools:context=".ui.main.MainActivity">
 
     <com.google.android.material.card.MaterialCardView
         android:id="@+id/miniPlayer"
+        style="@style/Widget.MyMusicPlayer.MiniPlayerCard"
         android:layout_width="0dp"
         android:layout_height="wrap_content"
         android:layout_margin="16dp"
-        app:cardCornerRadius="16dp"
-        app:cardElevation="4dp"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent">
@@ -47,10 +47,10 @@
 
                 <ImageView
                     android:id="@+id/imageMiniPlayerCover"
-                    android:layout_width="44dp"
-                    android:layout_height="44dp"
+                    android:layout_width="@dimen/size_mini_player_cover"
+                    android:layout_height="@dimen/size_mini_player_cover"
                     android:background="@drawable/bg_player_cover"
-                    android:padding="8dp"
+                    android:padding="7dp"
                     android:scaleType="centerCrop"
                     android:src="@drawable/ic_player_placeholder"
                     tools:ignore="ContentDescription" />
@@ -79,15 +79,17 @@
                         android:maxLines="1"
                         android:text="@string/no_artist"
                         android:textAppearance="@style/TextAppearance.Material3.BodySmall"
-                        android:textColor="@android:color/darker_gray" />
+                        android:textColor="@color/app_text_secondary" />
                 </LinearLayout>
 
-                <Button
+                <com.google.android.material.button.MaterialButton
                     android:id="@+id/buttonMiniPlayerAction"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:minWidth="0dp"
-                    android:text="@string/play" />
+                    style="@style/Widget.MyMusicPlayer.MiniPlayerAction"
+                    android:layout_width="@dimen/size_mini_player_action"
+                    android:layout_height="@dimen/size_mini_player_action"
+                    android:contentDescription="@string/play"
+                    app:icon="@drawable/ic_play_arrow"
+                    app:iconSize="@dimen/icon_size_emphasis" />
             </LinearLayout>
         </LinearLayout>
     </com.google.android.material.card.MaterialCardView>
@@ -119,45 +121,52 @@
                     android:gravity="center_vertical"
                     android:orientation="horizontal">
 
-                    <Button
+                    <com.google.android.material.button.MaterialButton
                         android:id="@+id/buttonTheme"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:minWidth="0dp"
-                        android:text="@string/theme_light" />
+                        style="@style/Widget.MyMusicPlayer.SurfaceIconButton"
+                        android:layout_width="@dimen/size_top_bar_icon_button"
+                        android:layout_height="@dimen/size_top_bar_icon_button"
+                        android:contentDescription="@string/action_switch_to_dark_theme"
+                        app:icon="@drawable/ic_theme_dark"
+                        app:iconSize="@dimen/icon_size_regular" />
 
-                    <Button
+                    <com.google.android.material.button.MaterialButton
                         android:id="@+id/buttonSearch"
-                        android:layout_width="wrap_content"
+                        style="@style/Widget.MyMusicPlayer.SecondaryButton"
+                        android:layout_width="0dp"
                         android:layout_height="wrap_content"
                         android:layout_marginStart="12dp"
                         android:layout_weight="1"
-                        android:gravity="end|center_vertical"
-                        android:minWidth="0dp"
-                        android:text="@string/action_search" />
+                        android:gravity="center_vertical"
+                        android:text="@string/action_search"
+                        app:icon="@drawable/ic_search_simple"
+                        app:iconGravity="textStart"
+                        app:iconPadding="8dp" />
                 </LinearLayout>
 
                 <com.google.android.material.card.MaterialCardView
                     android:id="@+id/cardWave"
+                    style="@style/Widget.MyMusicPlayer.SectionCard"
                     android:layout_width="match_parent"
                     android:layout_height="500dp"
                     android:layout_marginTop="16dp"
-                    app:cardCornerRadius="24dp"
-                    app:cardElevation="3dp">
+                    app:cardCornerRadius="28dp">
 
                     <LinearLayout
                         android:layout_width="match_parent"
                         android:layout_height="match_parent"
+                        android:background="@color/app_surface"
                         android:gravity="center"
                         android:orientation="vertical"
-                        android:padding="2dp">
+                        android:padding="28dp">
 
                         <TextView
                             android:id="@+id/textWaveTitle"
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
                             android:text="@string/wave_title"
-                            android:textAppearance="@style/TextAppearance.Material3.HeadlineSmall" />
+                            android:textAppearance="@style/TextAppearance.Material3.HeadlineSmall"
+                            android:textColor="@color/app_text_primary" />
 
                         <TextView
                             android:id="@+id/textWaveSubtitle"
@@ -167,16 +176,19 @@
                             android:gravity="center"
                             android:text="@string/wave_subtitle_loading"
                             android:textAppearance="@style/TextAppearance.Material3.BodyLarge"
-                            tools:text="Р вЂ”Р В°Р С—РЎС“РЎРѓРЎвЂљР С‘РЎвЂљР Вµ РЎРѓР В»РЎС“РЎвЂЎР В°Р в„–Р Р…РЎвЂ№Р в„– Р С—Р С•РЎвЂљР С•Р С” Р СРЎС“Р В·РЎвЂ№Р С”Р С‘" />
+                            android:textColor="@color/app_text_secondary"
+                            tools:text="Start a random music flow" />
 
-                        <Button
+                        <com.google.android.material.button.MaterialButton
                             android:id="@+id/buttonWaveAction"
-                            android:layout_width="120dp"
-                            android:layout_height="120dp"
+                            style="@style/Widget.MyMusicPlayer.PlayerPrimaryButton"
+                            android:layout_width="@dimen/size_wave_action_button"
+                            android:layout_height="@dimen/size_wave_action_button"
                             android:layout_marginTop="20dp"
+                            android:contentDescription="@string/play"
                             android:enabled="false"
-                            android:text="@string/play"
-                            android:textAppearance="@style/TextAppearance.Material3.TitleLarge" />
+                            app:icon="@drawable/ic_play_arrow"
+                            app:iconSize="@dimen/icon_size_wave" />
                     </LinearLayout>
                 </com.google.android.material.card.MaterialCardView>
 
@@ -189,13 +201,13 @@
 
                     <com.google.android.material.card.MaterialCardView
                         android:id="@+id/cardPlaylists"
+                        style="@style/Widget.MyMusicPlayer.SectionCard"
                         android:layout_width="0dp"
                         android:layout_height="96dp"
                         android:layout_weight="1"
                         android:clickable="true"
                         android:focusable="true"
-                        app:cardCornerRadius="16dp"
-                        app:cardElevation="3dp">
+                        app:rippleColor="?attr/colorControlHighlight">
 
                         <LinearLayout
                             android:layout_width="match_parent"
@@ -209,20 +221,21 @@
                                 android:layout_height="wrap_content"
                                 android:gravity="center"
                                 android:text="@string/card_playlists"
-                                android:textAppearance="@style/TextAppearance.Material3.TitleMedium" />
+                                android:textAppearance="@style/TextAppearance.Material3.TitleMedium"
+                                android:textColor="@color/app_text_primary" />
                         </LinearLayout>
                     </com.google.android.material.card.MaterialCardView>
 
                     <com.google.android.material.card.MaterialCardView
                         android:id="@+id/cardLocalMusic"
+                        style="@style/Widget.MyMusicPlayer.SectionCard"
                         android:layout_width="0dp"
                         android:layout_height="96dp"
                         android:layout_marginStart="12dp"
                         android:layout_weight="1"
                         android:clickable="true"
                         android:focusable="true"
-                        app:cardCornerRadius="16dp"
-                        app:cardElevation="3dp">
+                        app:rippleColor="?attr/colorControlHighlight">
 
                         <LinearLayout
                             android:layout_width="match_parent"
@@ -236,20 +249,21 @@
                                 android:layout_height="wrap_content"
                                 android:gravity="center"
                                 android:text="@string/card_local_music"
-                                android:textAppearance="@style/TextAppearance.Material3.TitleMedium" />
+                                android:textAppearance="@style/TextAppearance.Material3.TitleMedium"
+                                android:textColor="@color/app_text_primary" />
                         </LinearLayout>
                     </com.google.android.material.card.MaterialCardView>
 
                     <com.google.android.material.card.MaterialCardView
                         android:id="@+id/cardDownloaded"
+                        style="@style/Widget.MyMusicPlayer.SectionCard"
                         android:layout_width="0dp"
                         android:layout_height="96dp"
                         android:layout_marginStart="12dp"
                         android:layout_weight="1"
                         android:clickable="true"
                         android:focusable="true"
-                        app:cardCornerRadius="16dp"
-                        app:cardElevation="3dp">
+                        app:rippleColor="?attr/colorControlHighlight">
 
                         <LinearLayout
                             android:layout_width="match_parent"
@@ -263,7 +277,8 @@
                                 android:layout_height="wrap_content"
                                 android:gravity="center"
                                 android:text="@string/card_downloaded"
-                                android:textAppearance="@style/TextAppearance.Material3.TitleMedium" />
+                                android:textAppearance="@style/TextAppearance.Material3.TitleMedium"
+                                android:textColor="@color/app_text_primary" />
                         </LinearLayout>
                     </com.google.android.material.card.MaterialCardView>
                 </LinearLayout>
@@ -274,7 +289,8 @@
                     android:layout_height="wrap_content"
                     android:layout_marginTop="24dp"
                     android:text="@string/section_recent"
-                    android:textAppearance="@style/TextAppearance.Material3.TitleLarge" />
+                    android:textAppearance="@style/TextAppearance.Material3.TitleLarge"
+                    android:textColor="@color/app_text_primary" />
 
                 <androidx.recyclerview.widget.RecyclerView
                     android:id="@+id/recyclerRecent"

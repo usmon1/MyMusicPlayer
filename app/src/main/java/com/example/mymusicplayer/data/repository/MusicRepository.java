@@ -9,6 +9,7 @@ import androidx.annotation.NonNull;
 import androidx.lifecycle.LiveData;
 import androidx.lifecycle.MutableLiveData;
 
+import com.example.mymusicplayer.R;
 import com.example.mymusicplayer.data.local.MediaStoreHelper;
 import com.example.mymusicplayer.data.local.dao.CrossRefDao;
 import com.example.mymusicplayer.data.local.dao.PlaylistDao;
@@ -21,6 +22,7 @@ import com.example.mymusicplayer.data.remote.ApiConfig;
 import com.example.mymusicplayer.data.remote.JamendoApi;
 import com.example.mymusicplayer.data.remote.JamendoResponse;
 import com.example.mymusicplayer.data.remote.RetrofitClient;
+import com.example.mymusicplayer.util.DownloadSessionManager;
 import com.example.mymusicplayer.util.NetworkMonitor;
 
 import java.io.File;
@@ -55,7 +57,6 @@ public class MusicRepository {
     private static final String JAMENDO_WAVE_ORDER = "popularity_total";
     private static final String JAMENDO_AUDIO_FORMAT = "mp32";
     private static final int JAMENDO_RANDOM_OFFSET_PAGES = 20;
-
     private final Context appContext;
     private final TrackDao trackDao;
     private final PlaylistDao playlistDao;
@@ -402,10 +403,14 @@ public class MusicRepository {
         Request request = new Request.Builder()
                 .url(track.getDataUri())
                 .build();
+        DownloadSessionManager downloadSessionManager =
+                DownloadSessionManager.getInstance(appContext);
+        downloadSessionManager.onDownloadStarted(track.getId(), track.getTitle());
 
         okHttpClient.newCall(request).enqueue(new Callback() {
             @Override
             public void onFailure(@NonNull Call call, @NonNull IOException exception) {
+                downloadSessionManager.onDownloadFailed(track.getId());
                 if (callback != null) {
                     callback.onError(exception.getMessage());
                 }
@@ -414,6 +419,7 @@ public class MusicRepository {
             @Override
             public void onResponse(@NonNull Call call, @NonNull Response response) throws IOException {
                 if (!response.isSuccessful() || response.body() == null) {
+                    downloadSessionManager.onDownloadFailed(track.getId());
                     if (callback != null) {
                         callback.onError("Download failed.");
                     }
@@ -421,6 +427,9 @@ public class MusicRepository {
                 }
 
                 File outputFile = new File(downloadsDirectory, "track_" + track.getId() + resolveExtension(track.getDataUri()));
+                long totalBytes = response.body().contentLength();
+                long downloadedBytes = 0L;
+                int lastProgress = -1;
 
                 try (InputStream inputStream = response.body().byteStream();
                      FileOutputStream outputStream = new FileOutputStream(outputFile)) {
@@ -429,7 +438,19 @@ public class MusicRepository {
 
                     while ((bytesRead = inputStream.read(buffer)) != -1) {
                         outputStream.write(buffer, 0, bytesRead);
+                        downloadedBytes += bytesRead;
+
+                        if (totalBytes > 0L) {
+                            int progress = (int) ((downloadedBytes * 100L) / totalBytes);
+                            if (progress != lastProgress) {
+                                lastProgress = progress;
+                                downloadSessionManager.onProgress(track.getId(), progress);
+                            }
+                        }
                     }
+                } catch (IOException exception) {
+                    downloadSessionManager.onDownloadFailed(track.getId());
+                    throw exception;
                 }
 
                 String localUri = Uri.fromFile(outputFile).toString();
@@ -449,6 +470,7 @@ public class MusicRepository {
                         trackDao.update(savedTrack);
                     }
                 });
+                downloadSessionManager.onDownloadSuccess(track.getId());
 
                 if (callback != null) {
                     callback.onSuccess(localUri);
@@ -471,7 +493,7 @@ public class MusicRepository {
 
             track.setSourceType(SOURCE_TYPE_JAMENDO);
             if (track.getTitle() == null || track.getTitle().trim().isEmpty()) {
-                track.setTitle("Unknown title");
+                track.setTitle(appContext.getString(R.string.unknown_title));
             }
             if (track.getArtist() == null || track.getArtist().trim().isEmpty()) {
                 track.setArtist("Unknown artist");

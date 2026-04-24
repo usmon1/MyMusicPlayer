@@ -1,12 +1,15 @@
 package com.example.mymusicplayer.ui.player;
 
+import android.Manifest;
 import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
 import android.content.ServiceConnection;
+import android.content.pm.PackageManager;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.net.Uri;
+import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.IBinder;
@@ -19,6 +22,8 @@ import android.widget.SeekBar;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import androidx.activity.result.ActivityResultLauncher;
+import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.annotation.Nullable;
 import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
@@ -26,6 +31,7 @@ import androidx.appcompat.app.AppCompatDelegate;
 import androidx.core.content.ContextCompat;
 import androidx.swiperefreshlayout.widget.SwipeRefreshLayout;
 
+import com.google.android.material.button.MaterialButton;
 import com.example.mymusicplayer.R;
 import com.example.mymusicplayer.data.local.entity.Playlist;
 import com.example.mymusicplayer.data.local.entity.Track;
@@ -46,6 +52,9 @@ public abstract class BasePlayerActivity extends AppCompatActivity
         implements PlayerBottomSheetFragment.PlayerControlListener {
 
     private static final long PLAYER_PROGRESS_UPDATE_DELAY_MS = 500L;
+    private static final long MOTION_SHORT_DURATION_MS = 140L;
+    private static final long MOTION_MEDIUM_DURATION_MS = 220L;
+    private static final float PRESSED_SCALE = 0.97f;
     public static final String EXTRA_FORCE_OFFLINE_MODE = "force_offline_mode";
 
     private final List<Playlist> playlists = new ArrayList<>();
@@ -59,6 +68,16 @@ public abstract class BasePlayerActivity extends AppCompatActivity
             }
         }
     };
+    private final ActivityResultLauncher<String> notificationPermissionLauncher =
+            registerForActivityResult(new ActivityResultContracts.RequestPermission(), granted -> {
+                if (!granted && Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                    Toast.makeText(
+                            this,
+                            R.string.message_notifications_permission_needed,
+                            Toast.LENGTH_SHORT
+                    ).show();
+                }
+            });
 
     private MusicRepository repository;
     private NetworkMonitor networkMonitor;
@@ -80,9 +99,11 @@ public abstract class BasePlayerActivity extends AppCompatActivity
     private View miniPlayerView;
     private TextView miniPlayerTitleView;
     private TextView miniPlayerArtistView;
-    private Button miniPlayerActionButton;
+    private MaterialButton miniPlayerActionButton;
     private ImageView miniPlayerCoverView;
     private SeekBar miniPlayerProgressView;
+    private String lastRenderedMiniPlayerTrackId;
+    private Boolean lastRenderedMiniPlayerPlayState;
 
     private final ServiceConnection serviceConnection = new ServiceConnection() {
         @Override
@@ -148,11 +169,12 @@ public abstract class BasePlayerActivity extends AppCompatActivity
                 playlists.addAll(items);
             }
         });
+        requestNotificationPermissionIfNeeded();
     }
 
     protected void setupPlayerUi(View miniPlayerView,
                                  TextView miniPlayerTitleView,
-                                 Button miniPlayerActionButton) {
+                                 MaterialButton miniPlayerActionButton) {
         this.miniPlayerView = miniPlayerView;
         this.miniPlayerTitleView = miniPlayerTitleView;
         this.miniPlayerActionButton = miniPlayerActionButton;
@@ -163,6 +185,8 @@ public abstract class BasePlayerActivity extends AppCompatActivity
         miniPlayerView.setOnClickListener(view -> showPlayerBottomSheet());
         miniPlayerActionButton.setEnabled(true);
         miniPlayerActionButton.setOnClickListener(view -> togglePlayback());
+        applyPressMotion(miniPlayerView);
+        applyPressMotion(miniPlayerActionButton);
         if (miniPlayerProgressView != null) {
             miniPlayerProgressView.setOnTouchListener((view, event) -> true);
         }
@@ -229,7 +253,6 @@ public abstract class BasePlayerActivity extends AppCompatActivity
         }
 
         renderPlayerState();
-        showPlayerBottomSheet();
     }
 
     protected Track getCurrentTrack() {
@@ -339,6 +362,61 @@ public abstract class BasePlayerActivity extends AppCompatActivity
         return musicService.getDuration();
     }
 
+    protected boolean canSkipToPrevious() {
+        if (isServiceBound && musicService != null) {
+            return musicService.canPlayPrevious();
+        }
+
+        return getAdjacentTrackPreview(-1) != null;
+    }
+
+    protected boolean canSkipToNext() {
+        if (isServiceBound && musicService != null) {
+            return musicService.canPlayNext();
+        }
+
+        return getAdjacentTrackPreview(1) != null;
+    }
+
+    protected void startScreen(Intent intent) {
+        startActivity(intent);
+        overridePendingTransition(0, 0);
+    }
+
+    protected void finishScreen() {
+        finish();
+        overridePendingTransition(0, 0);
+    }
+
+    protected void applyPressMotion(@Nullable View view) {
+        if (view == null) {
+            return;
+        }
+
+        view.setOnTouchListener((pressedView, event) -> {
+            switch (event.getActionMasked()) {
+                case MotionEvent.ACTION_DOWN:
+                    pressedView.animate()
+                            .scaleX(PRESSED_SCALE)
+                            .scaleY(PRESSED_SCALE)
+                            .setDuration(MOTION_SHORT_DURATION_MS)
+                            .start();
+                    break;
+                case MotionEvent.ACTION_UP:
+                case MotionEvent.ACTION_CANCEL:
+                    pressedView.animate()
+                            .scaleX(1f)
+                            .scaleY(1f)
+                            .setDuration(MOTION_SHORT_DURATION_MS)
+                            .start();
+                    break;
+                default:
+                    break;
+            }
+            return false;
+        });
+    }
+
     private void togglePlayback() {
         if (!isServiceBound || musicService == null) {
             return;
@@ -366,8 +444,8 @@ public abstract class BasePlayerActivity extends AppCompatActivity
             Intent mainIntent = new Intent(this, MainActivity.class);
             mainIntent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_SINGLE_TOP);
             mainIntent.putExtra(EXTRA_FORCE_OFFLINE_MODE, true);
-            startActivity(mainIntent);
-            finish();
+            startScreen(mainIntent);
+            finishScreen();
         }
     }
 
@@ -399,6 +477,14 @@ public abstract class BasePlayerActivity extends AppCompatActivity
         }
 
         syncPlaybackQueueWithService();
+        String currentTrackId = currentTrack == null ? null : currentTrack.getId();
+        boolean hasRenderedMiniPlayerBefore = lastRenderedMiniPlayerTrackId != null;
+        boolean trackChanged = hasRenderedMiniPlayerBefore
+                && currentTrackId != null
+                && !currentTrackId.equals(lastRenderedMiniPlayerTrackId);
+        boolean playStateChanged = hasRenderedMiniPlayerBefore
+                && lastRenderedMiniPlayerPlayState != null
+                && lastRenderedMiniPlayerPlayState != isPlaying;
 
         if (currentTrack == null) {
             miniPlayerTitleView.setText(R.string.mini_player_idle);
@@ -422,8 +508,12 @@ public abstract class BasePlayerActivity extends AppCompatActivity
             loadMiniPlayerCover(currentTrack);
         }
 
-        miniPlayerActionButton.setText(isPlaying ? R.string.pause : R.string.play);
+        updatePlayPauseButton(miniPlayerActionButton, isPlaying);
+        miniPlayerActionButton.setEnabled(currentTrack != null);
+        miniPlayerActionButton.setAlpha(currentTrack == null ? 0.5f : 1f);
         updateMiniPlayerProgress();
+        animateMiniPlayerTrackChange(trackChanged);
+        animatePlaybackButtonState(miniPlayerActionButton, playStateChanged && currentTrack != null);
 
         if (playerBottomSheetFragment != null) {
             playerBottomSheetFragment.updatePlayerState(
@@ -434,6 +524,8 @@ public abstract class BasePlayerActivity extends AppCompatActivity
             notifyPlayerBottomSheetProgressChanged();
         }
 
+        lastRenderedMiniPlayerTrackId = currentTrackId;
+        lastRenderedMiniPlayerPlayState = isPlaying;
         onPlayerStateChanged(currentTrack, isPlaying);
     }
 
@@ -528,6 +620,10 @@ public abstract class BasePlayerActivity extends AppCompatActivity
             return;
         }
 
+        if (MusicService.PLAYBACK_SOURCE_LOCAL.equals(getCurrentPlaybackSource())) {
+            return;
+        }
+
         Track trackToDownload = currentTrack;
         if (trackToDownload == null) {
             Toast.makeText(this, R.string.message_select_track_first, Toast.LENGTH_SHORT).show();
@@ -592,6 +688,11 @@ public abstract class BasePlayerActivity extends AppCompatActivity
     }
 
     private Track getAdjacentTrack(int direction) {
+        return getAdjacentTrackPreview(direction);
+    }
+
+    @Nullable
+    private Track getAdjacentTrackPreview(int direction) {
         List<Track> queue = getPlaybackQueue();
         if (queue == null || queue.isEmpty() || currentTrack == null) {
             return null;
@@ -642,6 +743,65 @@ public abstract class BasePlayerActivity extends AppCompatActivity
 
         miniPlayerProgressView.setMax((int) duration);
         miniPlayerProgressView.setProgress((int) Math.min(currentPosition, duration));
+    }
+
+    private void animateMiniPlayerTrackChange(boolean trackChanged) {
+        if (!trackChanged || miniPlayerView == null) {
+            return;
+        }
+
+        miniPlayerView.setPivotY(miniPlayerView.getHeight());
+        miniPlayerView.setTranslationY(18f);
+        miniPlayerView.setAlpha(0.92f);
+        miniPlayerView.animate()
+                .translationY(0f)
+                .alpha(1f)
+                .setDuration(MOTION_MEDIUM_DURATION_MS)
+                .start();
+
+        animateTrackInfoView(miniPlayerTitleView);
+        animateTrackInfoView(miniPlayerArtistView);
+        animateTrackInfoView(miniPlayerCoverView);
+    }
+
+    private void animateTrackInfoView(@Nullable View view) {
+        if (view == null) {
+            return;
+        }
+
+        view.setAlpha(0.4f);
+        view.setTranslationY(10f);
+        view.animate()
+                .alpha(1f)
+                .translationY(0f)
+                .setDuration(MOTION_MEDIUM_DURATION_MS)
+                .start();
+    }
+
+    private void animatePlaybackButtonState(@Nullable View button, boolean shouldAnimate) {
+        if (button == null || !shouldAnimate) {
+            return;
+        }
+
+        button.animate().cancel();
+        button.setScaleX(0.9f);
+        button.setScaleY(0.9f);
+        button.setAlpha(0.7f);
+        button.animate()
+                .scaleX(1f)
+                .scaleY(1f)
+                .alpha(1f)
+                .setDuration(MOTION_MEDIUM_DURATION_MS)
+                .start();
+    }
+
+    protected void updatePlayPauseButton(@Nullable MaterialButton button, boolean playing) {
+        if (button == null) {
+            return;
+        }
+
+        button.setIconResource(playing ? R.drawable.ic_pause : R.drawable.ic_play_arrow);
+        button.setContentDescription(getString(playing ? R.string.pause : R.string.play));
     }
 
     private void notifyPlayerBottomSheetProgressChanged() {
@@ -734,5 +894,18 @@ public abstract class BasePlayerActivity extends AppCompatActivity
                 }
             });
         }).start();
+    }
+
+    private void requestNotificationPermissionIfNeeded() {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) {
+            return;
+        }
+
+        if (ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS)
+                == PackageManager.PERMISSION_GRANTED) {
+            return;
+        }
+
+        notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS);
     }
 }

@@ -1,3 +1,15 @@
 <resources>
     <dimen name="dialog_padding">16dp</dimen>
+    <dimen name="size_mini_player_cover">48dp</dimen>
+    <dimen name="size_top_bar_icon_button">48dp</dimen>
+    <dimen name="size_mini_player_action">50dp</dimen>
+    <dimen name="size_list_action_button">50dp</dimen>
+    <dimen name="size_player_action_button">56dp</dimen>
+    <dimen name="size_player_transport_button">68dp</dimen>
+    <dimen name="size_player_primary_button">88dp</dimen>
+    <dimen name="size_wave_action_button">112dp</dimen>
+    <dimen name="icon_size_compact">24dp</dimen>
+    <dimen name="icon_size_regular">26dp</dimen>
+    <dimen name="icon_size_emphasis">28dp</dimen>
+    <dimen name="icon_size_wave">52dp</dimen>
 </resources>

@@ -51,10 +51,12 @@ public class LocalMusicActivity extends BasePlayerActivity {
         setupSwipeRefresh(binding.swipeRefresh);
         setupPlayerUi(binding.miniPlayer, binding.textMiniPlayerTitle, binding.buttonMiniPlayerAction);
         refreshNetworkState(false);
-        binding.buttonBack.setOnClickListener(view -> finish());
+        applyPressMotion(binding.buttonBack);
+        binding.buttonBack.setOnClickListener(view -> finishScreen());
 
         viewModel.getLocalTracks().observe(this, tracks -> {
             trackAdapter.submitList(tracks);
+            updateTrackHighlight();
             binding.textEmpty.setVisibility(
                     tracks == null || tracks.isEmpty() ? android.view.View.VISIBLE : android.view.View.GONE
             );
@@ -82,6 +84,23 @@ public class LocalMusicActivity extends BasePlayerActivity {
     @Override
     protected boolean shouldNavigateToMainOnOfflineRefresh() {
         return false;
+    }
+
+    @Override
+    protected void onPlayerStateChanged(com.example.mymusicplayer.data.local.entity.Track track, boolean isPlaying) {
+        updateTrackHighlight();
+    }
+
+    private void updateTrackHighlight() {
+        if (trackAdapter == null) {
+            return;
+        }
+
+        com.example.mymusicplayer.data.local.entity.Track currentTrack = getCurrentTrack();
+        trackAdapter.updatePlaybackState(
+                currentTrack == null ? null : currentTrack.getId(),
+                MusicService.PLAYBACK_SOURCE_LOCAL.equals(getCurrentPlaybackSource())
+        );
     }
 
     private void ensureLocalMusicPermissionAndLoad() {

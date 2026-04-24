@@ -24,10 +24,14 @@
             android:layout_width="0dp"
             android:layout_height="0dp" />
 
-        <Button
+        <com.google.android.material.button.MaterialButton
             android:id="@+id/buttonCollapsedPlayPause"
-            android:layout_width="0dp"
-            android:layout_height="0dp" />
+            style="@style/Widget.MyMusicPlayer.MiniPlayerAction"
+            android:layout_width="@dimen/size_mini_player_action"
+            android:layout_height="@dimen/size_mini_player_action"
+            android:contentDescription="@string/play"
+            app:icon="@drawable/ic_play_arrow"
+            app:iconSize="@dimen/icon_size_compact" />
     </LinearLayout>
 
     <TextView
@@ -36,7 +40,7 @@
         android:layout_height="wrap_content"
         android:gravity="center"
         android:textAppearance="@style/TextAppearance.Material3.TitleMedium"
-        android:textColor="@android:color/darker_gray"
+        android:textColor="@color/app_text_secondary"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="parent"
@@ -49,7 +53,8 @@
         android:layout_marginTop="28dp"
         android:adjustViewBounds="true"
         android:background="@drawable/bg_player_cover"
-        android:padding="36dp"
+        android:elevation="2dp"
+        android:padding="30dp"
         android:scaleType="centerCrop"
         android:src="@drawable/ic_player_placeholder"
         app:layout_constraintEnd_toEndOf="parent"
@@ -72,9 +77,11 @@
             android:id="@+id/textExpandedTitle"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:ellipsize="end"
+            android:ellipsize="marquee"
             android:gravity="center"
-            android:maxLines="2"
+            android:marqueeRepeatLimit="marquee_forever"
+            android:scrollHorizontally="true"
+            android:singleLine="true"
             android:text="@string/mini_player_idle"
             android:textAppearance="@style/TextAppearance.Material3.HeadlineSmall"
             tools:text="Track Title" />
@@ -87,7 +94,7 @@
             android:gravity="center"
             android:text="@string/no_artist"
             android:textAppearance="@style/TextAppearance.Material3.BodyLarge"
-            android:textColor="@android:color/darker_gray"
+            android:textColor="@color/app_text_secondary"
             tools:text="Artist Name" />
 
         <LinearLayout
@@ -97,28 +104,34 @@
             android:gravity="center"
             android:orientation="horizontal">
 
-            <Button
+            <com.google.android.material.button.MaterialButton
                 android:id="@+id/buttonAddToPlaylist"
-                android:layout_width="56dp"
-                android:layout_height="56dp"
-                android:text="@string/player_action_add_symbol"
-                android:textSize="20sp" />
+                style="@style/Widget.MyMusicPlayer.PlayerActionButton"
+                android:layout_width="@dimen/size_player_action_button"
+                android:layout_height="@dimen/size_player_action_button"
+                android:contentDescription="@string/action_add_to_playlist"
+                app:icon="@drawable/ic_playlist_add"
+                app:iconSize="@dimen/icon_size_compact" />
 
-            <Button
+            <com.google.android.material.button.MaterialButton
                 android:id="@+id/buttonFavorite"
-                android:layout_width="56dp"
-                android:layout_height="56dp"
+                style="@style/Widget.MyMusicPlayer.PlayerActionButton"
+                android:layout_width="@dimen/size_player_action_button"
+                android:layout_height="@dimen/size_player_action_button"
                 android:layout_marginStart="20dp"
-                android:text="@string/player_action_favorite_off_symbol"
-                android:textSize="20sp" />
+                android:contentDescription="@string/action_favorite_add"
+                app:icon="@drawable/ic_favorite_outline"
+                app:iconSize="@dimen/icon_size_compact" />
 
-            <Button
+            <com.google.android.material.button.MaterialButton
                 android:id="@+id/buttonDownload"
-                android:layout_width="56dp"
-                android:layout_height="56dp"
+                style="@style/Widget.MyMusicPlayer.PlayerActionButton"
+                android:layout_width="@dimen/size_player_action_button"
+                android:layout_height="@dimen/size_player_action_button"
                 android:layout_marginStart="20dp"
-                android:text="@string/player_action_download_symbol"
-                android:textSize="20sp" />
+                android:contentDescription="@string/action_download"
+                app:icon="@drawable/ic_download_simple"
+                app:iconSize="@dimen/icon_size_compact" />
         </LinearLayout>
 
         <SeekBar
@@ -160,28 +173,34 @@
             android:gravity="center"
             android:orientation="horizontal">
 
-            <Button
+            <com.google.android.material.button.MaterialButton
                 android:id="@+id/buttonPrevious"
-                android:layout_width="64dp"
-                android:layout_height="64dp"
-                android:text="@string/player_previous"
-                android:textSize="16sp" />
+                style="@style/Widget.MyMusicPlayer.PlayerTransportButton"
+                android:layout_width="@dimen/size_player_transport_button"
+                android:layout_height="@dimen/size_player_transport_button"
+                android:contentDescription="@string/player_previous"
+                app:icon="@drawable/ic_skip_previous"
+                app:iconSize="@dimen/icon_size_compact" />
 
-            <Button
+            <com.google.android.material.button.MaterialButton
                 android:id="@+id/buttonExpandedPlayPause"
-                android:layout_width="88dp"
-                android:layout_height="88dp"
+                style="@style/Widget.MyMusicPlayer.PlayerPrimaryButton"
+                android:layout_width="@dimen/size_player_primary_button"
+                android:layout_height="@dimen/size_player_primary_button"
                 android:layout_marginStart="20dp"
                 android:layout_marginEnd="20dp"
-                android:text="@string/play"
-                android:textSize="18sp" />
+                android:contentDescription="@string/play"
+                app:icon="@drawable/ic_play_arrow"
+                app:iconSize="@dimen/icon_size_emphasis" />
 
-            <Button
+            <com.google.android.material.button.MaterialButton
                 android:id="@+id/buttonNext"
-                android:layout_width="64dp"
-                android:layout_height="64dp"
-                android:text="@string/player_next"
-                android:textSize="16sp" />
+                style="@style/Widget.MyMusicPlayer.PlayerTransportButton"
+                android:layout_width="@dimen/size_player_transport_button"
+                android:layout_height="@dimen/size_player_transport_button"
+                android:contentDescription="@string/player_next"
+                app:icon="@drawable/ic_skip_next"
+                app:iconSize="@dimen/icon_size_compact" />
         </LinearLayout>
 
     </LinearLayout>

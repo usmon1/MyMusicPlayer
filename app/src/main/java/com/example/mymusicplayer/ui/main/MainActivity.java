@@ -87,6 +87,8 @@ public class MainActivity extends BasePlayerActivity {
     }
 
     private void setupTopBar() {
+        applyPressMotion(binding.buttonTheme);
+        applyPressMotion(binding.buttonSearch);
         binding.buttonTheme.setOnClickListener(view -> {
             ThemeManager.toggleTheme(this);
             recreate();
@@ -97,27 +99,30 @@ public class MainActivity extends BasePlayerActivity {
                 return;
             }
 
-            startActivity(new Intent(this, SearchActivity.class));
+            startScreen(new Intent(this, SearchActivity.class));
         });
         updateThemeButton();
     }
 
     private void setupNavigationCards() {
+        applyPressMotion(binding.cardPlaylists);
+        applyPressMotion(binding.cardLocalMusic);
+        applyPressMotion(binding.cardDownloaded);
         binding.cardPlaylists.setOnClickListener(view -> {
             if (!isNetworkAvailable()) {
                 Toast.makeText(this, R.string.message_feature_online_only, Toast.LENGTH_SHORT).show();
                 return;
             }
 
-            startActivity(new Intent(this, PlaylistListActivity.class));
+            startScreen(new Intent(this, PlaylistListActivity.class));
         });
 
         binding.cardLocalMusic.setOnClickListener(view ->
-                startActivity(new Intent(this, LocalMusicActivity.class))
+                startScreen(new Intent(this, LocalMusicActivity.class))
         );
 
         binding.cardDownloaded.setOnClickListener(view ->
-                startActivity(new Intent(this, DownloadedActivity.class))
+                startScreen(new Intent(this, DownloadedActivity.class))
         );
     }
 
@@ -133,6 +138,7 @@ public class MainActivity extends BasePlayerActivity {
     }
 
     private void setupWaveBlock() {
+        applyPressMotion(binding.buttonWaveAction);
         binding.buttonWaveAction.setOnClickListener(view -> handleWaveAction());
     }
 
@@ -233,12 +239,16 @@ public class MainActivity extends BasePlayerActivity {
         if (!isNetworkAvailable()) {
             binding.textWaveSubtitle.setText(R.string.wave_subtitle_offline);
             binding.buttonWaveAction.setEnabled(false);
-            binding.buttonWaveAction.setText(R.string.offline_mode);
+            binding.buttonWaveAction.setIconResource(R.drawable.ic_play_arrow);
+            binding.buttonWaveAction.setContentDescription(getString(R.string.offline_mode));
+            binding.buttonWaveAction.setText("");
+            binding.buttonWaveAction.setAlpha(0.55f);
             binding.cardPlaylists.setAlpha(0.5f);
             return;
         }
 
         binding.cardPlaylists.setAlpha(1f);
+        binding.buttonWaveAction.setAlpha(1f);
         List<Track> availableWaveTracks = viewModel.getRandomTracks().getValue();
         boolean hasWaveTracks = availableWaveTracks != null && !availableWaveTracks.isEmpty();
         boolean isLoadingWave = Boolean.TRUE.equals(viewModel.getIsWaveLoading().getValue());
@@ -248,7 +258,9 @@ public class MainActivity extends BasePlayerActivity {
                     isLoadingWave ? R.string.wave_subtitle_loading : R.string.wave_subtitle_idle
             );
             binding.buttonWaveAction.setEnabled(!isLoadingWave);
-            binding.buttonWaveAction.setText(R.string.play);
+            binding.buttonWaveAction.setIconResource(R.drawable.ic_play_arrow);
+            binding.buttonWaveAction.setContentDescription(getString(R.string.play));
+            binding.buttonWaveAction.setText("");
             return;
         }
 
@@ -266,10 +278,18 @@ public class MainActivity extends BasePlayerActivity {
                     R.string.wave_subtitle_playing,
                     currentWaveTrack.getTitle()
             ));
-            binding.buttonWaveAction.setText(isPlaying() ? R.string.pause : R.string.play);
+            binding.buttonWaveAction.setIconResource(
+                    isPlaying() ? R.drawable.ic_pause : R.drawable.ic_play_arrow
+            );
+            binding.buttonWaveAction.setContentDescription(
+                    getString(isPlaying() ? R.string.pause : R.string.play)
+            );
+            binding.buttonWaveAction.setText("");
         } else {
             binding.textWaveSubtitle.setText(R.string.wave_subtitle_idle);
-            binding.buttonWaveAction.setText(R.string.play);
+            binding.buttonWaveAction.setIconResource(R.drawable.ic_play_arrow);
+            binding.buttonWaveAction.setContentDescription(getString(R.string.play));
+            binding.buttonWaveAction.setText("");
         }
     }
 
@@ -282,6 +302,7 @@ public class MainActivity extends BasePlayerActivity {
     @Override
     protected void onPlayerStateChanged(Track track, boolean isPlaying) {
         updateWaveUi();
+        updateRecentTrackHighlight();
     }
 
     @Override
@@ -399,6 +420,7 @@ public class MainActivity extends BasePlayerActivity {
 
         if (isNetworkAvailable()) {
             recentAdapter.submitList(new ArrayList<>(recentTracksCache));
+            updateRecentTrackHighlight();
             return;
         }
 
@@ -409,12 +431,29 @@ public class MainActivity extends BasePlayerActivity {
             }
         }
         recentAdapter.submitList(offlineRecentTracks);
+        updateRecentTrackHighlight();
     }
 
     private void updateThemeButton() {
-        binding.buttonTheme.setText(ThemeManager.isDarkTheme(this)
-                ? R.string.theme_dark
-                : R.string.theme_light);
+        boolean isDarkTheme = ThemeManager.isDarkTheme(this);
+        binding.buttonTheme.setIconResource(
+                isDarkTheme ? R.drawable.ic_theme_light : R.drawable.ic_theme_dark
+        );
+        binding.buttonTheme.setContentDescription(getString(
+                isDarkTheme ? R.string.action_switch_to_light_theme : R.string.action_switch_to_dark_theme
+        ));
+    }
+
+    private void updateRecentTrackHighlight() {
+        if (recentAdapter == null) {
+            return;
+        }
+
+        Track currentTrack = getCurrentTrack();
+        recentAdapter.updatePlaybackState(
+                currentTrack == null ? null : currentTrack.getId(),
+                MusicService.PLAYBACK_SOURCE_RECENT.equals(getCurrentPlaybackSource())
+        );
     }
 
     @Nullable

@@ -51,7 +51,10 @@ public class PlaylistListActivity extends BasePlayerActivity {
         setupSwipeRefresh(binding.swipeRefresh);
         setupPlayerUi(binding.miniPlayer, binding.textMiniPlayerTitle, binding.buttonMiniPlayerAction);
         refreshNetworkState(false);
-        binding.buttonBack.setOnClickListener(view -> finish());
+        applyPressMotion(binding.buttonBack);
+        applyPressMotion(binding.buttonOpenFavorites);
+        applyPressMotion(binding.buttonCreatePlaylist);
+        binding.buttonBack.setOnClickListener(view -> finishScreen());
 
         binding.buttonOpenFavorites.setOnClickListener(view -> {
             if (requireOnlineFeature()) {
@@ -83,7 +86,7 @@ public class PlaylistListActivity extends BasePlayerActivity {
         Intent intent = new Intent(this, PlaylistDetailsActivity.class);
         intent.putExtra(EXTRA_IS_FAVORITES, true);
         intent.putExtra(EXTRA_PLAYLIST_NAME, getString(R.string.title_favorites));
-        startActivity(intent);
+        startScreen(intent);
     }
 
     private void openPlaylistDetails(Playlist playlist) {
@@ -94,7 +97,7 @@ public class PlaylistListActivity extends BasePlayerActivity {
         Intent intent = new Intent(this, PlaylistDetailsActivity.class);
         intent.putExtra(EXTRA_PLAYLIST_ID, playlist.getPlaylistId());
         intent.putExtra(EXTRA_PLAYLIST_NAME, playlist.getName());
-        startActivity(intent);
+        startScreen(intent);
     }
 
     private void showCreatePlaylistDialog() {

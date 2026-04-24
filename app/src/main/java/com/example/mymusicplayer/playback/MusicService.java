@@ -357,6 +357,14 @@ public class MusicService extends Service {
         }
     }
 
+    public boolean canPlayPrevious() {
+        return getAdjacentTrackPreview(-1) != null;
+    }
+
+    public boolean canPlayNext() {
+        return getAdjacentTrackPreview(1) != null;
+    }
+
     public LiveData<Track> getCurrentTrack() {
         return currentTrack;
     }
@@ -699,6 +707,15 @@ public class MusicService extends Service {
 
     @Nullable
     private Track getAdjacentTrack(int direction) {
+        Track targetTrack = getAdjacentTrackPreview(direction);
+        if (targetTrack != null) {
+            queueIndex += direction;
+        }
+        return targetTrack;
+    }
+
+    @Nullable
+    private Track getAdjacentTrackPreview(int direction) {
         if (playbackQueue.isEmpty()) {
             return null;
         }
@@ -717,7 +734,6 @@ public class MusicService extends Service {
             return null;
         }
 
-        queueIndex = targetIndex;
         return playbackQueue.get(targetIndex);
     }
 

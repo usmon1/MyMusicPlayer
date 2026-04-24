@@ -2,4 +2,14 @@
 <resources>
     <color name="black">#FF000000</color>
     <color name="white">#FFFFFFFF</color>
+    <color name="app_background">#FFF6F1E8</color>
+    <color name="app_surface">#FFFFFBF5</color>
+    <color name="app_surface_alt">#FFF0E8DA</color>
+    <color name="app_outline">#1F3B3024</color>
+    <color name="app_text_primary">#FF2E241B</color>
+    <color name="app_text_secondary">#FF766554</color>
+    <color name="app_accent">#FFBA5A2A</color>
+    <color name="app_accent_dark">#FF8A3B16</color>
+    <color name="app_accent_soft">#FFF6D6C4</color>
+    <color name="app_accent_on">#FFFFF8F2</color>
 </resources>

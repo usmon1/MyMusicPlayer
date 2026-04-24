@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="black">#FF000000</color>
+    <color name="white">#FFFFFFFF</color>
+    <color name="app_background">#FF17120E</color>
+    <color name="app_surface">#FF211A15</color>
+    <color name="app_surface_alt">#FF2C241D</color>
+    <color name="app_outline">#336B5A4A</color>
+    <color name="app_text_primary">#FFF4E7D9</color>
+    <color name="app_text_secondary">#FFC4AF98</color>
+    <color name="app_accent">#FFE08A52</color>
+    <color name="app_accent_dark">#FFBE6C38</color>
+    <color name="app_accent_soft">#334A2C1A</color>
+    <color name="app_accent_on">#FF1D130D</color>
+</resources>

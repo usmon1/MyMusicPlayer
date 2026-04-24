@@ -41,7 +41,8 @@ public class SearchActivity extends BasePlayerActivity {
         refreshNetworkState(false);
 
         ImageButton backButton = binding.buttonBack;
-        backButton.setOnClickListener(view -> finish());
+        applyPressMotion(backButton);
+        backButton.setOnClickListener(view -> finishScreen());
 
         binding.inputSearch.addTextChangedListener(new TextWatcher() {
             @Override
@@ -60,6 +61,7 @@ public class SearchActivity extends BasePlayerActivity {
 
         viewModel.getSearchResults().observe(this, tracks -> {
             trackAdapter.submitList(tracks);
+            updateTrackHighlight();
             boolean isEmpty = tracks == null || tracks.isEmpty();
             binding.textEmpty.setText(
                     binding.inputSearch.getText() == null || binding.inputSearch.getText().toString().trim().isEmpty()
@@ -112,7 +114,24 @@ public class SearchActivity extends BasePlayerActivity {
         }
 
         if (!isNetworkAvailable) {
-            finish();
+            finishScreen();
         }
+    }
+
+    @Override
+    protected void onPlayerStateChanged(Track track, boolean isPlaying) {
+        updateTrackHighlight();
+    }
+
+    private void updateTrackHighlight() {
+        if (trackAdapter == null) {
+            return;
+        }
+
+        Track currentTrack = getCurrentTrack();
+        trackAdapter.updatePlaybackState(
+                currentTrack == null ? null : currentTrack.getId(),
+                MusicService.PLAYBACK_SOURCE_SEARCH.equals(getCurrentPlaybackSource())
+        );
     }
 }

@@ -62,7 +62,8 @@ public class PlaylistDetailsActivity extends BasePlayerActivity {
         setupSwipeRefresh(binding.swipeRefresh);
         setupPlayerUi(binding.miniPlayer, binding.textMiniPlayerTitle, binding.buttonMiniPlayerAction);
         refreshNetworkState(false);
-        binding.buttonBack.setOnClickListener(view -> finish());
+        applyPressMotion(binding.buttonBack);
+        binding.buttonBack.setOnClickListener(view -> finishScreen());
 
         observeTracks();
     }
@@ -83,12 +84,14 @@ public class PlaylistDetailsActivity extends BasePlayerActivity {
         tracksSource.observe(this, tracks -> {
             if (!isNetworkAvailable()) {
                 trackAdapter.submitList(new ArrayList<>());
+                updateTrackHighlight();
                 binding.textEmpty.setVisibility(android.view.View.VISIBLE);
                 binding.textEmpty.setText(R.string.message_feature_online_only);
                 return;
             }
 
             trackAdapter.submitList(tracks);
+            updateTrackHighlight();
             binding.textEmpty.setVisibility(
                     tracks == null || tracks.isEmpty() ? android.view.View.VISIBLE : android.view.View.GONE
             );
@@ -158,11 +161,29 @@ public class PlaylistDetailsActivity extends BasePlayerActivity {
 
         if (!isNetworkAvailable) {
             trackAdapter.submitList(new ArrayList<>());
+            updateTrackHighlight();
             binding.textEmpty.setVisibility(android.view.View.VISIBLE);
             binding.textEmpty.setText(R.string.message_feature_online_only);
             return;
         }
 
         observeTracks();
+    }
+
+    @Override
+    protected void onPlayerStateChanged(Track track, boolean isPlaying) {
+        updateTrackHighlight();
+    }
+
+    private void updateTrackHighlight() {
+        if (trackAdapter == null) {
+            return;
+        }
+
+        Track currentTrack = getCurrentTrack();
+        trackAdapter.updatePlaybackState(
+                currentTrack == null ? null : currentTrack.getId(),
+                ownsPlaybackSource(getCurrentPlaybackSource())
+        );
     }
 }
