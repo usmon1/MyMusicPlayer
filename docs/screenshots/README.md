@@ -5,13 +5,14 @@
 This folder is intended for GitHub screenshots used in the main `README.md`.
 
 Recommended files:
-- `home-light.png`
-- `home-dark.png`
-- `player.png`
-- `search.png`
-- `playlists.png`
-- `local-music.png`
-- `downloaded.png`
+- `home-light.jpg`
+- `home-dark.jpg`
+- `player.jpg`
+- `search.jpg`
+- `playlists.jpg`
+- `playlists-details.jpg`
+- `local-music.jpg`
+- `dowloaded.jpg`
 
 Recommended capture order:
 1. Home screen in light theme
@@ -19,8 +20,9 @@ Recommended capture order:
 3. Full player
 4. Search screen with results
 5. Playlist screen
-6. Local music screen
-7. Downloaded tracks screen
+6. Playlist details screen
+7. Local music screen
+8. Downloaded tracks screen
 
 Suggested capture rules:
 - Use the same device or emulator for all screenshots
@@ -31,16 +33,17 @@ Suggested capture rules:
 
 ## Русский
 
-Эта папка предназначена для скриншотов GitHub, которые будут использоваться в основном `README.md`.
+Эта папка предназначена для GitHub-скриншотов, которые используются в основном `README.md`.
 
 Рекомендуемые файлы:
-- `home-light.png`
-- `home-dark.png`
-- `player.png`
-- `search.png`
-- `playlists.png`
-- `local-music.png`
-- `downloaded.png`
+- `home-light.jpg`
+- `home-dark.jpg`
+- `player.jpg`
+- `search.jpg`
+- `playlists.jpg`
+- `playlists-details.jpg`
+- `local-music.jpg`
+- `dowloaded.jpg`
 
 Рекомендуемый порядок съёмки:
 1. Главный экран в светлой теме
@@ -48,8 +51,9 @@ Suggested capture rules:
 3. Полный экран плеера
 4. Экран поиска с результатами
 5. Экран плейлистов
-6. Экран локальной музыки
-7. Экран скачанных треков
+6. Экран деталей плейлиста
+7. Экран локальной музыки
+8. Экран скачанных треков
 
 Рекомендации по съёмке:
 - Использовать одно и то же устройство или эмулятор

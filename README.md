@@ -2,13 +2,7 @@
 
 `MyMusicPlayer` is an Android music player built with `Java`, `XML`, `MVVM`, `Room`, `Retrofit`, and `Media3 ExoPlayer`.
 
-The app combines:
-- online discovery through the Jamendo API
-- local device audio playback
-- downloaded tracks
-- favorites and playlists
-- shared mini-player and full player flow across screens
-- light and dark themes
+It combines online discovery, local playback, downloaded tracks, playlists, favorites, a shared player flow across screens, and light/dark themes in a simple junior-friendly architecture.
 
 ---
 
@@ -17,7 +11,25 @@ The app combines:
 ### Overview
 MyMusicPlayer is a complete Android music player project focused on practical architecture, readable Java code, and a polished user experience without unnecessary complexity.
 
-The project uses a simple `MVVM + Repository` structure and keeps business logic out of activities. It supports online music browsing, local audio playback, downloaded tracks, playlists, favorites, background playback, notification controls, and playback state continuity between screens.
+The app uses a simple `MVVM + Repository` structure and keeps business logic out of activities. It supports online music browsing, local audio playback, downloaded tracks, playlists, favorites, background playback, notification controls, and playback state continuity between screens.
+
+### Screenshots
+
+| Home Light                                     | Home Dark                                    |
+|------------------------------------------------|----------------------------------------------|
+| ![Home Light](docs/screenshots/home-light.jpg) | ![Home Dark](docs/screenshots/home-dark.jpg) |
+
+| Player | Search |
+| --- | --- |
+| ![Player](docs/screenshots/player.jpg) | ![Search](docs/screenshots/search.jpg) |
+
+| Playlists | Playlist Details |
+| --- | --- |
+| ![Playlists](docs/screenshots/playlists.jpg) | ![Playlist Details](docs/screenshots/playlists-details.jpg) |
+
+| Local Music | Downloaded |
+| --- | --- |
+| ![Local Music](docs/screenshots/local-music.jpg) | ![Downloaded](docs/screenshots/dowloaded.jpg) |
 
 ### Features
 - `My Wave` online track flow powered by Jamendo
@@ -32,14 +44,7 @@ The project uses a simple `MVVM + Repository` structure and keeps business logic
 - Audio focus handling
 - `ACTION_AUDIO_BECOMING_NOISY` handling
 - Last played track and position restore
-- Separate playback contexts for:
-  - `My Wave`
-  - `Recent`
-  - `Search`
-  - `Local Music`
-  - `Downloaded`
-  - `Favorites`
-  - playlist playback
+- Separate playback contexts for `My Wave`, `Recent`, `Search`, `Local Music`, `Downloaded`, `Favorites`, and playlist playback
 - Offline / online mode handling
 - Manual refresh on content screens
 - Light / dark theme toggle
@@ -59,34 +64,22 @@ The project uses a simple `MVVM + Repository` structure and keeps business logic
 - `Material Design`
 
 ### Project Structure
-- `app/src/main/java/com/example/mymusicplayer/data`
+- `app/src/main/java/com/example/mymusicplayer/data`  
   Data layer: Room, Retrofit, repository, entities, DAOs
-- `app/src/main/java/com/example/mymusicplayer/playback`
+- `app/src/main/java/com/example/mymusicplayer/playback`  
   Background playback service and playback state handling
-- `app/src/main/java/com/example/mymusicplayer/ui`
+- `app/src/main/java/com/example/mymusicplayer/ui`  
   Activities, adapters, view models, bottom-sheet player
-- `app/src/main/java/com/example/mymusicplayer/util`
+- `app/src/main/java/com/example/mymusicplayer/util`  
   Theme, network, downloads, playback helpers
-- `app/src/main/res`
-  Layouts, themes, icons, colors, strings
-
-### Screenshots
-Add GitHub screenshots to [`docs/screenshots`](docs/screenshots/README.md).
-
-Recommended screenshot set:
-- `home-light.png`
-- `home-dark.png`
-- `player.png`
-- `search.png`
-- `playlists.png`
-- `local-music.png`
-- `downloaded.png`
+- `app/src/main/res`  
+  Layouts, themes, icons, colors, and strings
 
 ### Build Requirements
 - Android Studio
 - Android SDK configured in `local.properties`
 - JDK available through Android Studio JBR
-- Jamendo API client id in `local.properties`:
+- Jamendo API client id in `local.properties`
 
 ```properties
 jamendoClientId=YOUR_CLIENT_ID
@@ -127,6 +120,10 @@ MyMusicPlayer — это полноценный Android-плеер, собран
 
 Проект использует простую структуру `MVVM + Repository` и не переносит бизнес-логику в `Activity`. Приложение поддерживает онлайн-поиск музыки, локальное воспроизведение, скачанные треки, плейлисты, избранное, фоновое воспроизведение, управление из уведомлений и сохранение состояния плеера между экранами.
 
+### Скриншоты
+
+Скриншоты выше показывают главный экран в светлой и тёмной теме, полноэкранный плеер, поиск, плейлисты, детали плейлиста, локальную музыку и скачанные треки.
+
 ### Возможности
 - Онлайн-поток `My Wave` через Jamendo
 - Онлайн-поиск по названию и артисту
@@ -140,14 +137,7 @@ MyMusicPlayer — это полноценный Android-плеер, собран
 - Обработка audio focus
 - Обработка `ACTION_AUDIO_BECOMING_NOISY`
 - Восстановление последнего трека и позиции
-- Отдельные playback-контексты для:
-  - `My Wave`
-  - `Recent`
-  - `Search`
-  - `Local Music`
-  - `Downloaded`
-  - `Favorites`
-  - воспроизведения плейлиста
+- Отдельные playback-контексты для `My Wave`, `Recent`, `Search`, `Local Music`, `Downloaded`, `Favorites` и воспроизведения плейлистов
 - Обработка online / offline режима
 - Ручное обновление экранов через swipe refresh
 - Переключение светлой и тёмной темы
@@ -167,28 +157,16 @@ MyMusicPlayer — это полноценный Android-плеер, собран
 - `Material Design`
 
 ### Структура проекта
-- `app/src/main/java/com/example/mymusicplayer/data`
+- `app/src/main/java/com/example/mymusicplayer/data`  
   Слой данных: Room, Retrofit, repository, сущности и DAO
-- `app/src/main/java/com/example/mymusicplayer/playback`
+- `app/src/main/java/com/example/mymusicplayer/playback`  
   Фоновый сервис воспроизведения и логика playback state
-- `app/src/main/java/com/example/mymusicplayer/ui`
-  Экраны, адаптеры, view model, bottom-sheet player
-- `app/src/main/java/com/example/mymusicplayer/util`
-  Тема, сеть, загрузки, playback helper-классы
-- `app/src/main/res`
-  Layout-файлы, темы, иконки, цвета, строки
-
-### Скриншоты для GitHub
-Скриншоты лучше складывать в [`docs/screenshots`](docs/screenshots/README.md).
-
-Рекомендуемый набор:
-- `home-light.png`
-- `home-dark.png`
-- `player.png`
-- `search.png`
-- `playlists.png`
-- `local-music.png`
-- `downloaded.png`
+- `app/src/main/java/com/example/mymusicplayer/ui`  
+  Экраны, адаптеры, view model и bottom-sheet player
+- `app/src/main/java/com/example/mymusicplayer/util`  
+  Тема, сеть, загрузки и playback helper-классы
+- `app/src/main/res`  
+  Layout-файлы, темы, иконки, цвета и строки
 
 ### Что нужно для сборки
 - Android Studio
