@@ -85,16 +85,12 @@ The app uses a simple `MVVM + Repository` structure and keeps business logic out
 jamendoClientId=YOUR_CLIENT_ID
 ```
 
-### Build Notes
-On this machine, the Windows system temp directory is unreliable for Room verification, so Gradle should use the project-local `.tmp` directory.
+### Build
 
-Working build command:
+Standard build command:
 
 ```powershell
-$env:JAVA_HOME='C:\Program Files\Android\Android Studio\jbr'
-$env:PATH="$env:JAVA_HOME\bin;$env:PATH"
-$env:JAVA_TOOL_OPTIONS='-Djava.io.tmpdir="C:\Users\Usmon Aliev\AndroidStudioProjects\MyMusicPlayer\.tmp"'
-.\gradlew assembleDebug
+./gradlew assembleDebug
 ```
 
 ### Current Status
@@ -178,16 +174,12 @@ MyMusicPlayer — это полноценный Android-плеер, собран
 jamendoClientId=YOUR_CLIENT_ID
 ```
 
-### Важная заметка по сборке
-На этой машине системная временная директория Windows нестабильна для Room verification, поэтому Gradle лучше запускать через локальную `.tmp` папку проекта.
+### Сборка
 
-Рабочая команда:
+Стандартная команда сборки:
 
 ```powershell
-$env:JAVA_HOME='C:\Program Files\Android\Android Studio\jbr'
-$env:PATH="$env:JAVA_HOME\bin;$env:PATH"
-$env:JAVA_TOOL_OPTIONS='-Djava.io.tmpdir="C:\Users\Usmon Aliev\AndroidStudioProjects\MyMusicPlayer\.tmp"'
-.\gradlew assembleDebug
+./gradlew assembleDebug
 ```
 
 ### Текущее состояние

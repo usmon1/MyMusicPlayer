@@ -136,7 +136,7 @@ public class DownloadSessionManager {
                 appContext,
                 DOWNLOAD_NOTIFICATION_CHANNEL_ID
         )
-                .setSmallIcon(R.mipmap.ic_launcher)
+                .setSmallIcon(R.drawable.ic_notification_logo)
                 .setOnlyAlertOnce(true)
                 .setSilent(true)
                 .setCategory(finished

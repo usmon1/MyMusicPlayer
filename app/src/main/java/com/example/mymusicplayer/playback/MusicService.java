@@ -856,7 +856,7 @@ public class MusicService extends Service {
         long position = getCurrentPosition();
 
         return new NotificationCompat.Builder(this, NOTIFICATION_CHANNEL_ID)
-                .setSmallIcon(R.mipmap.ic_launcher)
+                .setSmallIcon(R.drawable.ic_notification_logo)
                 .setContentTitle(title)
                 .setContentText(artist)
                 .setSubText(getString(
